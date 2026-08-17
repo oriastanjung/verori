@@ -38,7 +38,7 @@ export function AppShell({ title, homeHref, groups, user, children }: Props) {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader>
+        <SidebarHeader className="h-14 justify-center border-b">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -92,7 +92,7 @@ export function AppShell({ title, homeHref, groups, user, children }: Props) {
           ))}
         </SidebarContent>
 
-        <SidebarFooter>
+        <SidebarFooter className="border-t">
           <SidebarMenu>
             <SidebarMenuItem>
               <UserMenu user={user} />
