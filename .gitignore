@@ -1,0 +1,19 @@
+# rust
+/target
+**/*.rs.bk
+
+# env
+.env
+.env.*.local
+
+# node
+node_modules
+.next
+*.tsbuildinfo
+
+# editors and tools
+.claude
+.DS_Store
+
+# logs
+*.log

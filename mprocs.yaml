@@ -1,0 +1,9 @@
+procs:
+  api:
+    shell: "just watch-api"
+  worker:
+    shell: "just watch-worker"
+  codegen:
+    shell: "just watch-codegen"
+  web:
+    shell: "just web"
