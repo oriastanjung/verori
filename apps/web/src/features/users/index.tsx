@@ -1,76 +1,30 @@
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { UserCreateForm } from "@/features/users/components/user-create-form";
-import { UserRowActions } from "@/features/users/components/user-row-actions";
+import { UserCrud } from "@/features/users/components/user-crud";
+import type { UserListQuery } from "@/features/users/dtos/user.dto";
 import { listUsers } from "@/features/users/services/user.service";
 
 type Props = {
+  searchParams: Record<string, string | string[] | undefined>;
   currentUserId: string;
 };
 
+function toQuery(params: Props["searchParams"]): UserListQuery {
+  const read = (key: string): string | undefined => {
+    const value = params[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  return {
+    page: Number(read("page")) || undefined,
+    per_page: Number(read("per_page")) || undefined,
+    search: read("search"),
+    sort_by: read("sort_by"),
+    sort_dir: read("sort_dir"),
+  };
+}
+
 /** View layer for user management. The admin page renders only this. */
-export async function UsersView({ currentUserId }: Props) {
-  const users = await listUsers();
+export async function UsersView({ searchParams, currentUserId }: Props) {
+  const page = await listUsers(toQuery(searchParams));
 
-  return (
-    <section className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">User Management</h1>
-        <p className="text-sm text-muted-foreground">
-          Roles, bans and accounts, served by the Better Auth admin plugin.
-        </p>
-      </header>
-
-      <UserCreateForm />
-
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name ?? "-"}</TableCell>
-                <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                <TableCell>
-                  <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                    {user.role ?? "user"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {user.banned ? (
-                    <Badge variant="destructive">banned</Badge>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">active</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <UserRowActions
-                    userId={user.id}
-                    role={user.role ?? "user"}
-                    banned={user.banned}
-                    isSelf={user.id === currentUserId}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </section>
-  );
+  return <UserCrud page={page} currentUserId={currentUserId} />;
 }

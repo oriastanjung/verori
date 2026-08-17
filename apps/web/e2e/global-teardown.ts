@@ -12,6 +12,7 @@ export const TEST_TITLE_PREFIX = "e2e-";
 const ADMIN = { email: "admin@verori.com", password: "Admin123!" };
 
 type Example = { id: number; title: string };
+type ExamplePage = { items: Example[] };
 
 async function signInAsAdmin(): Promise<string> {
   const response = await fetch(`${API_BASE_URL}/api/auth/sign-in/email`, {
@@ -40,14 +41,15 @@ export default async function globalTeardown(): Promise<void> {
 
   const headers = { "content-type": "application/json", authorization: `Bearer ${token}` };
 
-  const listed = await fetch(`${API_BASE_URL}/api/examples`, { headers });
+  const listed = await fetch(`${API_BASE_URL}/api/examples?per_page=100`, { headers });
   if (!listed.ok) {
     console.warn(`[teardown] could not list examples: ${listed.status}`);
     return;
   }
 
-  const examples = (await listed.json()) as Example[];
-  const ids = examples
+  // The list endpoint returns a page, not a bare array.
+  const page = (await listed.json()) as ExamplePage;
+  const ids = (page.items ?? [])
     .filter((example) => example.title.startsWith(TEST_TITLE_PREFIX))
     .map((example) => example.id);
 

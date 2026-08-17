@@ -5,9 +5,15 @@ import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function Page({ searchParams }: Props) {
   const session = await getSession();
   if (!session) redirect("/auth/sign-in");
 
-  return <UsersView currentUserId={session.user.id} />;
+  return (
+    <UsersView searchParams={await searchParams} currentUserId={session.user.id} />
+  );
 }

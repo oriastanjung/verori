@@ -2,20 +2,67 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use sea_orm::sea_query::Expr;
+use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
-    Set,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, Order,
+    PaginatorTrait, QueryFilter, QueryOrder, Select, Set,
 };
 
 use db::entities::example;
 use db::tx;
 
-use crate::modules::example::dto::{CreateExampleRequest, UpdateExampleRequest};
+use crate::modules::example::dto::{CreateExampleRequest, ListExampleQuery, UpdateExampleRequest};
+
+/// Sorting is limited to this list so a query string cannot reach arbitrary
+/// columns.
+fn sort_column(name: Option<&str>) -> example::Column {
+    match name {
+        Some("title") => example::Column::Title,
+        Some("published") => example::Column::Published,
+        Some("created_at") => example::Column::CreatedAt,
+        _ => example::Column::Id,
+    }
+}
+
+fn sort_order(direction: Option<&str>) -> Order {
+    match direction {
+        Some("asc") => Order::Asc,
+        _ => Order::Desc,
+    }
+}
+
+fn apply_filters(query: &ListExampleQuery) -> Select<example::Entity> {
+    let mut select = example::Entity::find();
+
+    if let Some(published) = query.published {
+        select = select.filter(example::Column::Published.eq(published));
+    }
+
+    if let Some(search) = query.search.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        let pattern = format!("%{search}%");
+        select = select.filter(
+            Condition::any()
+                .add(Expr::col(example::Column::Title).ilike(pattern.clone()))
+                .add(Expr::col(example::Column::Content).ilike(pattern)),
+        );
+    }
+
+    select.order_by(
+        sort_column(query.sort_by.as_deref()),
+        sort_order(query.sort_dir.as_deref()),
+    )
+}
 
 /// Data access contract. Swap the implementation without touching the service.
 #[async_trait]
 pub trait ExampleRepository: Send + Sync {
-    async fn find_all(&self, published: Option<bool>) -> Result<Vec<example::Model>, DbErr>;
+    /// Returns one page of rows and the total number of matches.
+    async fn find_page(
+        &self,
+        query: &ListExampleQuery,
+        page: u64,
+        per_page: u64,
+    ) -> Result<(Vec<example::Model>, u64), DbErr>;
     async fn find_by_id(&self, id: i32) -> Result<Option<example::Model>, DbErr>;
     async fn create(&self, input: CreateExampleRequest) -> Result<example::Model, DbErr>;
     async fn update(
@@ -34,14 +81,20 @@ pub struct SeaOrmExampleRepository {
 
 #[async_trait]
 impl ExampleRepository for SeaOrmExampleRepository {
-    async fn find_all(&self, published: Option<bool>) -> Result<Vec<example::Model>, DbErr> {
-        let mut query = example::Entity::find().order_by_desc(example::Column::Id);
+    async fn find_page(
+        &self,
+        query: &ListExampleQuery,
+        page: u64,
+        per_page: u64,
+    ) -> Result<(Vec<example::Model>, u64), DbErr> {
+        let connection = tx::conn(&self.db);
+        let paginator = apply_filters(query).paginate(&connection, per_page);
 
-        if let Some(published) = published {
-            query = query.filter(example::Column::Published.eq(published));
-        }
+        let total = paginator.num_items().await?;
+        // The paginator is zero based, the api is one based.
+        let items = paginator.fetch_page(page.saturating_sub(1)).await?;
 
-        query.all(&tx::conn(&self.db)).await
+        Ok((items, total))
     }
 
     async fn find_by_id(&self, id: i32) -> Result<Option<example::Model>, DbErr> {

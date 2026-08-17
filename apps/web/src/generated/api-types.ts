@@ -735,6 +735,18 @@ export interface components {
         ErrorBody: {
             message: string;
         };
+        /** @description One page of results plus the counts a table needs for its footer. */
+        ExamplePage: {
+            items: components["schemas"]["ExampleResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            total_pages: number;
+        };
         ExampleResponse: {
             content?: string | null;
             /** Format: date-time */
@@ -1433,6 +1445,15 @@ export interface operations {
     list_examples: {
         parameters: {
             query?: {
+                /** @description One based. */
+                page?: number | null;
+                per_page?: number | null;
+                /** @description Matches the title or the content. */
+                search?: string | null;
+                /** @description One of: id, title, published, created_at. */
+                sort_by?: string | null;
+                /** @description asc or desc. */
+                sort_dir?: string | null;
                 published?: boolean | null;
             };
             header?: never;
@@ -1446,7 +1467,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExampleResponse"][];
+                    "application/json": components["schemas"]["ExamplePage"];
                 };
             };
             500: {

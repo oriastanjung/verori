@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { HouseIcon, ListChecksIcon, UserIcon } from "@phosphor-icons/react/dist/ssr";
 
-import { AppShell, type NavGroup } from "@/components/layout/app-shell";
+import { AppShell } from "@/components/layout/app-shell";
+import type { NavGroup } from "@/components/layout/nav-items";
 import { isAdmin } from "@/features/auth/dtos/auth.dto";
 import { getSession } from "@/lib/session";
 
@@ -8,9 +10,9 @@ const NAV: NavGroup[] = [
   {
     label: "Main Menu",
     items: [
-      { label: "Overview", href: "/dashboard" },
-      { label: "Example Management", href: "/dashboard/examples" },
-      { label: "Profile", href: "/dashboard/profile" },
+      { label: "Overview", href: "/dashboard", icon: HouseIcon },
+      { label: "Example Management", href: "/dashboard/examples", icon: ListChecksIcon },
+      { label: "Profile", href: "/dashboard/profile", icon: UserIcon },
     ],
   },
 ];
@@ -28,7 +30,7 @@ export default async function CoreAppLayout({ children }: LayoutProps<"/">) {
   }
 
   return (
-    <AppShell title="Dashboard" groups={NAV} user={session.user}>
+    <AppShell title="Dashboard" homeHref="/dashboard" groups={NAV} user={session.user}>
       {children}
     </AppShell>
   );

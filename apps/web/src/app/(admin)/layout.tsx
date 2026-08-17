@@ -1,17 +1,21 @@
 import { redirect } from "next/navigation";
+import { DatabaseIcon, UsersIcon } from "@phosphor-icons/react/dist/ssr";
 
-import { AppShell, type NavGroup } from "@/components/layout/app-shell";
+import { AppShell } from "@/components/layout/app-shell";
+import type { NavGroup } from "@/components/layout/nav-items";
 import { isAdmin } from "@/features/auth/dtos/auth.dto";
 import { getSession } from "@/lib/session";
 
 const NAV: NavGroup[] = [
   {
     label: "Master Data",
-    items: [{ label: "Example Management", href: "/admin/examples" }],
+    items: [
+      { label: "Example Management", href: "/admin/examples", icon: DatabaseIcon },
+    ],
   },
   {
     label: "User Management",
-    items: [{ label: "Users", href: "/admin/users" }],
+    items: [{ label: "Users", href: "/admin/users", icon: UsersIcon }],
   },
 ];
 
@@ -28,7 +32,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
   }
 
   return (
-    <AppShell title="Admin" groups={NAV} user={session.user}>
+    <AppShell title="Admin" homeHref="/admin" groups={NAV} user={session.user}>
       {children}
     </AppShell>
   );

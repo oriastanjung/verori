@@ -4,13 +4,15 @@ import { apiClient } from "@/lib/api-client";
 import type {
   CreateExampleInput,
   Example,
+  ExampleListQuery,
+  ExamplePage,
   UpdateExampleInput,
 } from "@/features/examples/dtos/example.dto";
 
 /** All API calls for this feature live here. Components never call fetch directly. */
-export async function listExamples(published?: boolean): Promise<Example[]> {
+export async function listExamples(query: ExampleListQuery): Promise<ExamplePage> {
   const { data, error } = await apiClient.GET("/api/examples", {
-    params: { query: published === undefined ? {} : { published } },
+    params: { query },
   });
 
   if (error) throw new Error(error.message);

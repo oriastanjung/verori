@@ -16,6 +16,7 @@ I built VERORI to solve three problems at once:
 - **Clean architecture, enforced by shape.** Every module is the same five files: route, controller, service, repository, dto. Business rules never leak into handlers, and SQL never leaks into services.
 - **Auth and roles that are already wired.** Better Auth handles sign up, sign in, sessions, password reset and admin user management. Route guards live next to the routes, roles are declared in one file, and the browser never holds a token that JavaScript can read — the session sits in an httpOnly cookie and the server forwards it as a bearer token, so an XSS has nothing to steal.
 - **One transaction per service method.** Mark a method `#[tx]` and it, plus every repository call it makes, commits or rolls back together. Serialisation failures and deadlocks are retried. No handles passed around by hand.
+- **One CRUD screen, reused everywhere.** `AppCrud` gives every module search, filters, sortable columns, selection, server side pagination with real totals, and create, edit and delete through dialogs. Deletes always confirm first.
 - **AI native.** See below.
 
 ## AI native
@@ -25,6 +26,8 @@ Coding agents are good at filling in a pattern and bad at inventing one consiste
 - `just new-module` scaffolds a complete, compiling module — for the api, the worker, or the web app — and registers it everywhere it needs to be registered (module tree, dependency injection, router, queue channel enum). The generated module already has its route guards and its transaction boundary in place.
 - `AGENTS.md` states the architecture rules in the form an agent reads at the start of a session.
 - Because the scaffold already compiles, an agent starts from a working module and edits it, instead of writing five files from scratch and getting the wiring subtly wrong.
+
+- A scaffolded web feature already renders `AppCrud`, so a new screen has a working table before you write a line of it.
 
 The result: the agent spends its budget on your business logic, not on rediscovering where a repository trait goes.
 

@@ -6,7 +6,7 @@ use crate::shared::error::{AppResult, ErrorBody};
 use crate::shared::state::AppState;
 use crate::modules::example::dto::{
     BulkDeleteExampleRequest, BulkResultResponse, BulkUpdateExampleRequest, CreateExampleRequest,
-    ExampleResponse, ListExampleQuery, PublishJobResponse, UpdateExampleRequest,
+    ExamplePage, ExampleResponse, ListExampleQuery, PublishJobResponse, UpdateExampleRequest,
 };
 
 #[utoipa::path(
@@ -15,16 +15,16 @@ use crate::modules::example::dto::{
     tag = "example",
     params(ListExampleQuery),
     responses(
-        (status = 200, body = Vec<ExampleResponse>),
+        (status = 200, body = ExamplePage),
         (status = 500, body = ErrorBody)
     )
 )]
 pub async fn list_examples(
     State(state): State<AppState>,
     Query(query): Query<ListExampleQuery>,
-) -> AppResult<Json<Vec<ExampleResponse>>> {
-    let examples = state.example_service.list(query.published).await?;
-    Ok(Json(examples))
+) -> AppResult<Json<ExamplePage>> {
+    let page = state.example_service.list(query).await?;
+    Ok(Json(page))
 }
 
 #[utoipa::path(

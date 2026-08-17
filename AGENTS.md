@@ -205,6 +205,8 @@ src/app/(auth)/auth/*      sign in, sign up, forgot and reset password
 src/app/(core-app)/        the signed-in app, sidebar group "Main Menu"
 src/app/(admin)/admin/*    admin only, groups "Master Data" and "User Management"
 src/components/ui/         shadcn components, do not edit by hand
+src/components/composite/  AppCrud and its parts, shared by every module
+src/components/layout/     the signed-in shell and the sidebar
 src/features/<name>/
   index.tsx                the view layer; the page renders only this
   components/              presentational + client components
@@ -216,9 +218,42 @@ src/generated/api-types.ts generated, never edit
 src/lib/api-client.ts      typed openapi-fetch client
 ```
 
+### AppCrud
+
+**Every list screen uses `AppCrud`.** Do not hand-roll a table.
+
+It gives you search, filter dropdowns, sortable columns, row selection,
+pagination with real totals, and create, edit and delete through dialogs. A
+destructive action always goes through an alert dialog, never a bare button.
+
+```tsx
+<AppCrud<Order>
+  title="Order Management"
+  page={page}                    // { items, total, page, per_page, total_pages }
+  columns={COLUMNS}              // key, header, sortable, render
+  fields={FIELDS}                // the create and edit dialog inputs
+  filters={FILTERS}
+  labels={{ singular: "order" }}
+  actions={{ create, update, remove, bulkRemove, bulkUpdate }}
+  renderRowActions={(row) => <SomethingExtra id={row.id} />}
+/>
+```
+
+- Leave an action out of `actions` and its control disappears from the UI. That
+  is how a non-admin screen hides delete.
+- `columns` and `renderRowActions` hold functions, so the component that builds
+  them must be a **client** component: `features/<name>/components/<name>-crud.tsx`.
+  The feature's `index.tsx` stays a server component that fetches and passes only
+  data.
+- Paging, search and sort live in the url. The server component reads
+  `searchParams` and asks the api for that exact page, so a link is shareable and
+  the totals are real rather than counted in the browser.
+- The api list endpoint therefore returns a page, not an array:
+  `{ items, total, page, per_page, total_pages }`.
+
 Rules:
 
-- **A `page.tsx` contains no logic.** It imports the feature's `index.tsx` and renders it.
+- **A `page.tsx` contains no logic.** It reads `searchParams` and renders the feature's `index.tsx`.
 - **Only `services/` calls the API.** Components and actions never call `fetch` or `apiClient` directly.
 - **Mutations go through server actions**, and the client side uses `useActionState` so pending and error states are handled uniformly. Actions return `ActionState`, never throw to the client.
 - **DTOs derive from generated types**, so a Rust change breaks the build in the right place:
@@ -331,6 +366,8 @@ the browser tests too: start the api, `just seed`, then `just e2e`.
 - Codegen needs a database, because the auth half of the OpenAPI document comes from a live auth instance.
 - The api image is ~13 MB rather than the ~6 MB it used to be. Better Auth pulls webauthn-rs, which needs OpenSSL, and there is no feature flag to drop it.
 - Adding a dependency to `apps/web`? Update **both** lockfiles, or the Docker build breaks on `npm ci`.
+- The queue tests fail if a worker is running against the same database, because it eats the jobs they just published. Stop the worker before `just test`.
+- `valueOf` is taken by `Object`, which is why the crud field callback is called `initialValue`.
 
 
 # Proof read from top to bottom

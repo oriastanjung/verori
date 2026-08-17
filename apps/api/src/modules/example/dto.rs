@@ -61,7 +61,27 @@ pub struct PublishJobResponse {
     pub job_id: i64,
 }
 
-#[derive(Debug, Deserialize, IntoParams)]
+/// Paging, searching, sorting and filtering for the list endpoint.
+#[derive(Debug, Clone, Default, Deserialize, IntoParams)]
 pub struct ListExampleQuery {
+    /// One based.
+    pub page: Option<u64>,
+    pub per_page: Option<u64>,
+    /// Matches the title or the content.
+    pub search: Option<String>,
+    /// One of: id, title, published, created_at.
+    pub sort_by: Option<String>,
+    /// asc or desc.
+    pub sort_dir: Option<String>,
     pub published: Option<bool>,
+}
+
+/// One page of results plus the counts a table needs for its footer.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ExamplePage {
+    pub items: Vec<ExampleResponse>,
+    pub total: u64,
+    pub page: u64,
+    pub per_page: u64,
+    pub total_pages: u64,
 }

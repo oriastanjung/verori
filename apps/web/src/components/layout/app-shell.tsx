@@ -1,7 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -15,38 +14,57 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { Separator } from "@/components/ui/separator";
+import { UserMenu } from "@/components/layout/user-menu";
+import type { NavGroup } from "@/components/layout/nav-items";
 import type { AuthUser } from "@/features/auth/dtos/auth.dto";
-
-export type NavItem = {
-  label: string;
-  href: string;
-};
-
-export type NavGroup = {
-  label: string;
-  items: NavItem[];
-};
 
 type Props = {
   title: string;
+  homeHref: string;
   groups: NavGroup[];
   user: AuthUser;
   children: React.ReactNode;
 };
 
-/** The signed-in shell. Both the user app and the admin app render this. */
-export function AppShell({ title, groups, user, children }: Props) {
+/**
+ * The signed-in shell. Both the user app and the admin app render this.
+ * Icons stay visible when the sidebar collapses.
+ */
+export function AppShell({ title, homeHref, groups, user, children }: Props) {
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <SidebarHeader>
-          <div className="flex flex-col gap-1 px-2 py-1.5">
-            <span className="text-sm font-semibold">VERORI</span>
-            <span className="text-xs text-muted-foreground">{title}</span>
-          </div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                size="lg"
+                render={
+                  <Link href={homeHref}>
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary">
+                      <Image
+                        src="/next.svg"
+                        alt="VERORI"
+                        width={20}
+                        height={20}
+                        className="dark:invert"
+                      />
+                    </div>
+                    <div className="grid flex-1 text-left leading-tight">
+                      <span className="truncate text-sm font-semibold">VERORI</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {title}
+                      </span>
+                    </div>
+                  </Link>
+                }
+              />
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarHeader>
 
         <SidebarContent>
@@ -58,7 +76,13 @@ export function AppShell({ title, groups, user, children }: Props) {
                   {group.items.map((item) => (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
-                        render={<Link href={item.href}>{item.label}</Link>}
+                        tooltip={item.label}
+                        render={
+                          <Link href={item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                          </Link>
+                        }
                       />
                     </SidebarMenuItem>
                   ))}
@@ -69,18 +93,14 @@ export function AppShell({ title, groups, user, children }: Props) {
         </SidebarContent>
 
         <SidebarFooter>
-          <div className="flex flex-col gap-2 px-2 py-1.5">
-            <div className="flex flex-col gap-1">
-              <span className="truncate text-sm font-medium">
-                {user.name ?? user.email}
-              </span>
-              <Badge variant="secondary" className="w-fit">
-                {user.role ?? "user"}
-              </Badge>
-            </div>
-            <SignOutButton />
-          </div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <UserMenu user={user} />
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarFooter>
+
+        <SidebarRail />
       </Sidebar>
 
       <SidebarInset>

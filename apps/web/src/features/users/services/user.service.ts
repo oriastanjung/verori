@@ -1,6 +1,10 @@
 import "server-only";
 
-import type { ListUsersResult, ManagedUser } from "@/features/users/dtos/user.dto";
+import type {
+  ListUsersResponse,
+  UserListQuery,
+  UserPage,
+} from "@/features/users/dtos/user.dto";
 import { API_BASE_URL, WEB_ORIGIN, getSessionToken } from "@/lib/session";
 
 /**
@@ -37,11 +41,42 @@ async function call<T>(
   return payload as T;
 }
 
-export async function listUsers(): Promise<ManagedUser[]> {
-  const result = await call<ListUsersResult>("/api/auth/admin/list-users?limit=100", {
-    method: "GET",
+const DEFAULT_PER_PAGE = 10;
+
+/** The admin plugin pages with limit and offset, so this converts. */
+export async function listUsers(query: UserListQuery): Promise<UserPage> {
+  const perPage = query.per_page ?? DEFAULT_PER_PAGE;
+  const page = query.page ?? 1;
+
+  const params = new URLSearchParams({
+    limit: String(perPage),
+    offset: String((page - 1) * perPage),
   });
-  return result.users ?? [];
+
+  if (query.search) {
+    params.set("searchValue", query.search);
+    params.set("searchField", "email");
+  }
+  if (query.sort_by) {
+    params.set("sortBy", query.sort_by);
+    params.set("sortDirection", query.sort_dir === "asc" ? "asc" : "desc");
+  }
+
+  const result = await call<ListUsersResponse>(
+    `/api/auth/admin/list-users?${params.toString()}`,
+    { method: "GET" },
+  );
+
+  const items = result.users ?? [];
+  const total = result.total ?? items.length;
+
+  return {
+    items,
+    total,
+    page,
+    per_page: perPage,
+    total_pages: Math.max(1, Math.ceil(total / perPage)),
+  };
 }
 
 export function setUserRole(userId: string, role: string): Promise<unknown> {

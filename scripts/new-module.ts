@@ -89,7 +89,7 @@ function scaffoldApi(name: string): void {
   write(
     join(base, "dto.rs"),
     `use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ${pascal}Response {
@@ -97,9 +97,31 @@ pub struct ${pascal}Response {
     pub name: String,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct Create${pascal}Request {
     pub name: String,
+}
+
+/// Paging, searching and sorting for the list endpoint.
+#[derive(Debug, Clone, Default, Deserialize, IntoParams)]
+pub struct List${pascal}Query {
+    /// One based.
+    pub page: Option<u64>,
+    pub per_page: Option<u64>,
+    pub search: Option<String>,
+    pub sort_by: Option<String>,
+    /// asc or desc.
+    pub sort_dir: Option<String>,
+}
+
+/// One page of results plus the counts a table needs for its footer.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ${pascal}Page {
+    pub items: Vec<${pascal}Response>,
+    pub total: u64,
+    pub page: u64,
+    pub per_page: u64,
+    pub total_pages: u64,
 }
 `,
   );
@@ -113,11 +135,17 @@ use sea_orm::{DatabaseConnection, DbErr};
 
 use db::tx;
 
-use crate::modules::${name}::dto::${pascal}Response;
+use crate::modules::${name}::dto::{List${pascal}Query, ${pascal}Response};
 
 #[async_trait]
 pub trait ${pascal}Repository: Send + Sync {
-    async fn find_all(&self) -> Result<Vec<${pascal}Response>, DbErr>;
+    /// Returns one page of rows and the total number of matches.
+    async fn find_page(
+        &self,
+        query: &List${pascal}Query,
+        page: u64,
+        per_page: u64,
+    ) -> Result<(Vec<${pascal}Response>, u64), DbErr>;
 }
 
 pub struct SeaOrm${pascal}Repository {
@@ -126,10 +154,16 @@ pub struct SeaOrm${pascal}Repository {
 
 #[async_trait]
 impl ${pascal}Repository for SeaOrm${pascal}Repository {
-    async fn find_all(&self) -> Result<Vec<${pascal}Response>, DbErr> {
+    async fn find_page(
+        &self,
+        _query: &List${pascal}Query,
+        _page: u64,
+        _per_page: u64,
+    ) -> Result<(Vec<${pascal}Response>, u64), DbErr> {
         // Query through tx::conn so the call joins the service transaction.
+        // See the example module for paginate, search and sort.
         let _connection = tx::conn(&self.db);
-        Ok(Vec::new())
+        Ok((Vec::new(), 0))
     }
 }
 
@@ -147,13 +181,17 @@ use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 use transactional::transactional;
 
-use crate::modules::${name}::dto::${pascal}Response;
+use crate::modules::${name}::dto::{List${pascal}Query, ${pascal}Page};
 use crate::modules::${name}::repository::${pascal}Repository;
 use crate::shared::error::AppResult;
 
+const DEFAULT_PAGE: u64 = 1;
+const DEFAULT_PER_PAGE: u64 = 10;
+const MAX_PER_PAGE: u64 = 100;
+
 #[async_trait]
 pub trait ${pascal}Service: Send + Sync {
-    async fn list(&self) -> AppResult<Vec<${pascal}Response>>;
+    async fn list(&self, query: List${pascal}Query) -> AppResult<${pascal}Page>;
 }
 
 pub struct Default${pascal}Service {
@@ -167,9 +205,19 @@ pub struct Default${pascal}Service {
 #[async_trait]
 impl ${pascal}Service for Default${pascal}Service {
     #[tx]
-    async fn list(&self) -> AppResult<Vec<${pascal}Response>> {
-        let records = self.repository.find_all().await?;
-        Ok(records)
+    async fn list(&self, query: List${pascal}Query) -> AppResult<${pascal}Page> {
+        let per_page = query.per_page.unwrap_or(DEFAULT_PER_PAGE).clamp(1, MAX_PER_PAGE);
+        let page = query.page.unwrap_or(DEFAULT_PAGE).max(DEFAULT_PAGE);
+
+        let (items, total) = self.repository.find_page(&query, page, per_page).await?;
+
+        Ok(${pascal}Page {
+            items,
+            total,
+            page,
+            per_page,
+            total_pages: total.div_ceil(per_page),
+        })
     }
 }
 
@@ -184,10 +232,10 @@ pub fn create_${name}_service(
 
   write(
     join(base, "controller.rs"),
-    `use axum::extract::State;
+    `use axum::extract::{Query, State};
 use axum::Json;
 
-use crate::modules::${name}::dto::${pascal}Response;
+use crate::modules::${name}::dto::{List${pascal}Query, ${pascal}Page};
 use crate::shared::error::{AppResult, ErrorBody};
 use crate::shared::state::AppState;
 
@@ -195,16 +243,18 @@ use crate::shared::state::AppState;
     get,
     path = "/${kebab}",
     tag = "${name}",
+    params(List${pascal}Query),
     responses(
-        (status = 200, body = Vec<${pascal}Response>),
+        (status = 200, body = ${pascal}Page),
         (status = 500, body = ErrorBody)
     )
 )]
 pub async fn list_${name}(
     State(state): State<AppState>,
-) -> AppResult<Json<Vec<${pascal}Response>>> {
-    let records = state.${name}_service.list().await?;
-    Ok(Json(records))
+    Query(query): Query<List${pascal}Query>,
+) -> AppResult<Json<${pascal}Page>> {
+    let page = state.${name}_service.list(query).await?;
+    Ok(Json(page))
 }
 `,
   );
@@ -484,6 +534,24 @@ function scaffoldWeb(name: string): void {
   name: string;
 };
 
+/** The shape AppCrud expects from the api. */
+export type ${pascal}Page = {
+  items: ${pascal}[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+};
+
+/** What the list page reads out of the url. */
+export type ${pascal}ListQuery = {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  sort_by?: string;
+  sort_dir?: string;
+};
+
 export type ActionState = {
   ok: boolean;
   message: string;
@@ -500,23 +568,34 @@ export const INITIAL_ACTION_STATE: ActionState = {
     join(base, "services", `${slug}.service.ts`),
     `import "server-only";
 
-import type { ${pascal} } from "@/features/${slug}/dtos/${slug}.dto";
+import type {
+  ${pascal}ListQuery,
+  ${pascal}Page,
+} from "@/features/${slug}/dtos/${slug}.dto";
 
 /**
  * Every API call for this feature belongs here. Components and actions never
  * call fetch directly.
  *
- * Use the generated client once the api has a matching route. It attaches the
- * session automatically:
+ * Swap this for the generated client once the api has the route. It attaches
+ * the session automatically:
  *
  *   import { apiClient } from "@/lib/api-client";
  *
- *   const { data, error } = await apiClient.GET("/api/${slug}");
+ *   const { data, error } = await apiClient.GET("/api/${slug}", {
+ *     params: { query },
+ *   });
  *   if (error) throw new Error(error.message);
  *   return data;
  */
-export async function list${pascal}(): Promise<${pascal}[]> {
-  return [];
+export async function list${pascal}(query: ${pascal}ListQuery): Promise<${pascal}Page> {
+  return {
+    items: [],
+    total: 0,
+    page: query.page ?? 1,
+    per_page: query.per_page ?? 10,
+    total_pages: 0,
+  };
 }
 `,
   );
@@ -525,75 +604,98 @@ export async function list${pascal}(): Promise<${pascal}[]> {
     join(base, "actions", `${slug}.actions.ts`),
     `"use server";
 
+import { revalidatePath } from "next/cache";
+
 import type { ActionState } from "@/features/${slug}/dtos/${slug}.dto";
 
-export async function submit${pascal}Action(
+const FEATURE_PATH = "/dashboard/${slug}";
+
+function toMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function readText(formData: FormData, field: string): string {
+  return String(formData.get(field) ?? "").trim();
+}
+
+export async function create${pascal}Action(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const name = String(formData.get("name") ?? "").trim();
+  const name = readText(formData, "name");
 
   if (name.length === 0) {
     return { ok: false, message: "Name is required" };
   }
 
-  return { ok: true, message: \`Saved \${name}\` };
+  try {
+    // Call the service here.
+    revalidatePath(FEATURE_PATH);
+    return { ok: true, message: \`Created \${name}\` };
+  } catch (error) {
+    return { ok: false, message: toMessage(error) };
+  }
+}
+
+export async function delete${pascal}Action(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = Number(formData.get("id"));
+
+  try {
+    // Call the service here.
+    revalidatePath(FEATURE_PATH);
+    return { ok: true, message: \`Deleted \${id}\` };
+  } catch (error) {
+    return { ok: false, message: toMessage(error) };
+  }
 }
 `,
   );
 
   write(
-    join(base, "hooks", `use-${slug}-form.ts`),
+    join(base, "components", `${slug}-crud.tsx`),
     `"use client";
 
-import { useActionState } from "react";
-
-import { submit${pascal}Action } from "@/features/${slug}/actions/${slug}.actions";
+import { AppCrud } from "@/components/composite/app-crud";
+import type { CrudColumn, CrudField } from "@/components/composite/crud-types";
 import {
-  INITIAL_ACTION_STATE,
-  type ActionState,
-} from "@/features/${slug}/dtos/${slug}.dto";
+  create${pascal}Action,
+  delete${pascal}Action,
+} from "@/features/${slug}/actions/${slug}.actions";
+import type { ${pascal}, ${pascal}Page } from "@/features/${slug}/dtos/${slug}.dto";
 
-export function use${pascal}Form() {
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(
-    submit${pascal}Action,
-    INITIAL_ACTION_STATE,
-  );
+const COLUMNS: CrudColumn<${pascal}>[] = [
+  { key: "name", header: "Name", sortable: true, className: "font-medium" },
+];
 
-  return { state, formAction, pending };
-}
-`,
-  );
+const FIELDS: CrudField<${pascal}>[] = [
+  {
+    name: "name",
+    label: "Name",
+    required: true,
+    initialValue: (row) => row.name,
+  },
+];
 
-  write(
-    join(base, "components", `${slug}-form.tsx`),
-    `"use client";
+type Props = {
+  page: ${pascal}Page;
+};
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { use${pascal}Form } from "@/features/${slug}/hooks/use-${slug}-form";
-
-export function ${pascal}Form() {
-  const { state, formAction, pending } = use${pascal}Form();
-
+export function ${pascal}Crud({ page }: Props) {
   return (
-    <form action={formAction} className="flex flex-col gap-4 rounded-lg border p-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" />
-      </div>
-
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving..." : "Save"}
-      </Button>
-
-      {state.message.length > 0 && (
-        <p className={state.ok ? "text-sm text-green-600" : "text-sm text-red-600"}>
-          {state.message}
-        </p>
-      )}
-    </form>
+    <AppCrud<${pascal}>
+      title="${pascal} Management"
+      page={page}
+      columns={COLUMNS}
+      fields={FIELDS}
+      labels={{ singular: "${slug}" }}
+      actions={{
+        create: create${pascal}Action,
+        remove: delete${pascal}Action,
+      }}
+    />
   );
 }
 `,
@@ -601,19 +703,35 @@ export function ${pascal}Form() {
 
   write(
     join(base, "index.tsx"),
-    `import { ${pascal}Form } from "@/features/${slug}/components/${slug}-form";
+    `import { ${pascal}Crud } from "@/features/${slug}/components/${slug}-crud";
+import type { ${pascal}ListQuery } from "@/features/${slug}/dtos/${slug}.dto";
 import { list${pascal} } from "@/features/${slug}/services/${slug}.service";
 
-export async function ${pascal}View() {
-  const records = await list${pascal}();
+type Props = {
+  searchParams: Record<string, string | string[] | undefined>;
+};
 
-  return (
-    <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">${pascal}</h1>
-      <${pascal}Form />
-      <p className="text-sm text-muted-foreground">{records.length} records</p>
-    </section>
-  );
+/** Turns the url into the query the api understands. */
+function toQuery(params: Props["searchParams"]): ${pascal}ListQuery {
+  const read = (key: string): string | undefined => {
+    const value = params[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  return {
+    page: Number(read("page")) || undefined,
+    per_page: Number(read("per_page")) || undefined,
+    search: read("search"),
+    sort_by: read("sort_by"),
+    sort_dir: read("sort_dir"),
+  };
+}
+
+/** View layer for this feature. Pages render only this. */
+export async function ${pascal}View({ searchParams }: Props) {
+  const page = await list${pascal}(toQuery(searchParams));
+
+  return <${pascal}Crud page={page} />;
 }
 `,
   );
@@ -625,7 +743,10 @@ export async function ${pascal}View() {
   console.log("\nThe page should contain nothing but this:");
   console.log(`    import { ${pascal}View } from "@/features/${slug}";`);
   console.log('    export const dynamic = "force-dynamic";');
-  console.log(`    export default function Page() { return <${pascal}View />; }`);
+  console.log("    type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };");
+  console.log(`    export default async function Page({ searchParams }: Props) {`);
+  console.log(`      return <${pascal}View searchParams={await searchParams} />;`);
+  console.log("    }");
   console.log("\nThen add it to the sidebar in src/app/(core-app)/layout.tsx");
   console.log("or src/app/(admin)/layout.tsx.");
 }

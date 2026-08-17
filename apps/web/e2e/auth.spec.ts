@@ -65,6 +65,8 @@ test("signing out closes the app again", async ({ page }) => {
   await signIn(page, USER);
   await expect(page).toHaveURL(/\/dashboard/);
 
+  // Sign out lives inside the account popover in the sidebar footer.
+  await page.getByRole("button", { name: /account menu/i }).click();
   await page.getByRole("button", { name: /sign out/i }).click();
   await expect(page).toHaveURL(/\/auth\/sign-in/);
 
@@ -72,18 +74,45 @@ test("signing out closes the app again", async ({ page }) => {
   await expect(page).toHaveURL(/\/auth\/sign-in/);
 });
 
-test("a user can create an example and it reaches the api", async ({ page }) => {
+test("a user can create an example through the dialog", async ({ page }) => {
   const title = `${TEST_TITLE_PREFIX}${Date.now()}`;
 
   await signIn(page, USER);
   await page.goto("/dashboard/examples");
 
-  await page.fill('input[name="title"]', title);
-  await page.fill('input[name="content"]', "created by the e2e test");
-  await page.getByRole("button", { name: /create example/i }).click();
+  await page.getByRole("button", { name: /new example/i }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
 
-  // The title also shows up in the success message, so assert on the table row.
+  await page.fill('input[name="title"]', title);
+  await page.fill('textarea[name="content"]', "created by the e2e test");
+  await page.getByRole("button", { name: /^create$/i }).click();
+
+  // The dialog closes itself once the server confirms the write.
+  await expect(page.getByRole("dialog")).toBeHidden();
   await expect(page.getByRole("cell", { name: title })).toBeVisible();
+});
+
+test("deleting asks for confirmation first", async ({ page }) => {
+  const title = `${TEST_TITLE_PREFIX}${Date.now()}-delete`;
+
+  await signIn(page, ADMIN);
+  await page.goto("/admin/examples");
+
+  await page.getByRole("button", { name: /new example/i }).click();
+  await page.fill('input[name="title"]', title);
+  await page.getByRole("button", { name: /^create$/i }).click();
+  await expect(page.getByRole("cell", { name: title })).toBeVisible();
+
+  await page
+    .getByRole("row", { name: new RegExp(title) })
+    .getByRole("button", { name: /^delete$/i })
+    .click();
+
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await expect(page.getByText("This cannot be undone.")).toBeVisible();
+
+  await page.getByRole("alertdialog").getByRole("button", { name: /^delete$/i }).click();
+  await expect(page.getByRole("cell", { name: title })).toHaveCount(0);
 });
 
 test("delete is admin only, so a user never sees the button", async ({ page }) => {
@@ -93,11 +122,27 @@ test("delete is admin only, so a user never sees the button", async ({ page }) =
   await expect(page.getByRole("button", { name: /^delete$/i })).toHaveCount(0);
 });
 
+test("the table pages, searches and sorts through the api", async ({ page }) => {
+  await signIn(page, ADMIN);
+  await page.goto("/admin/examples");
+
+  const counter = page.locator('[data-slot="crud-count"]');
+  await expect(counter).toContainText("Showing");
+
+  // Sorting and paging are held in the url, so a link stays shareable.
+  await page.getByRole("button", { name: /^Title/ }).click();
+  await expect(page).toHaveURL(/sort_by=title/);
+
+  await page.fill('input[aria-label="Search"]', "definitely-no-such-row");
+  await expect(counter).toContainText("of 0");
+  await expect(page.getByText("No examples yet.")).toBeVisible();
+});
+
 test("an admin can see and manage users", async ({ page }) => {
   await signIn(page, ADMIN);
   await page.goto("/admin/users");
 
-  await expect(page.getByText(USER.email)).toBeVisible();
-  await expect(page.getByText(ADMIN.email)).toBeVisible();
+  await expect(page.getByRole("cell", { name: USER.email })).toBeVisible();
+  await expect(page.getByRole("cell", { name: ADMIN.email })).toBeVisible();
   await expect(page.getByText("This is you")).toBeVisible();
 });

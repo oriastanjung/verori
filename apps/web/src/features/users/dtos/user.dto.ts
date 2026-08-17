@@ -2,9 +2,28 @@ import type { AuthUser, Role } from "@/features/auth/dtos/auth.dto";
 
 export type ManagedUser = AuthUser;
 
-export type ListUsersResult = {
+/** What the admin plugin returns from list-users. */
+export type ListUsersResponse = {
   users: ManagedUser[];
-  total?: number;
+  total: number;
+  limit?: number;
+};
+
+/** The shape AppCrud expects. */
+export type UserPage = {
+  items: ManagedUser[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+};
+
+export type UserListQuery = {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  sort_by?: string;
+  sort_dir?: string;
 };
 
 export type ActionState = {

@@ -10,17 +10,20 @@ use queue::{PublishOptions, QueueChannel};
 
 use crate::shared::error::{AppError, AppResult};
 use crate::modules::example::dto::{
-    BulkDeleteExampleRequest, BulkUpdateExampleRequest, CreateExampleRequest, ExampleResponse,
-    UpdateExampleRequest,
+    BulkDeleteExampleRequest, BulkUpdateExampleRequest, CreateExampleRequest, ExamplePage,
+    ExampleResponse, ListExampleQuery, UpdateExampleRequest,
 };
 use crate::modules::example::repository::ExampleRepository;
 
 const RESOURCE: &str = "example";
+const DEFAULT_PAGE: u64 = 1;
+const DEFAULT_PER_PAGE: u64 = 10;
+const MAX_PER_PAGE: u64 = 100;
 
 /// Business rules for the example module.
 #[async_trait]
 pub trait ExampleService: Send + Sync {
-    async fn list(&self, published: Option<bool>) -> AppResult<Vec<ExampleResponse>>;
+    async fn list(&self, query: ListExampleQuery) -> AppResult<ExamplePage>;
     async fn get(&self, id: i32) -> AppResult<ExampleResponse>;
     async fn create(&self, input: CreateExampleRequest) -> AppResult<ExampleResponse>;
     async fn update(&self, id: i32, input: UpdateExampleRequest) -> AppResult<ExampleResponse>;
@@ -48,9 +51,19 @@ impl DefaultExampleService {
 #[transactional]
 #[async_trait]
 impl ExampleService for DefaultExampleService {
-    async fn list(&self, published: Option<bool>) -> AppResult<Vec<ExampleResponse>> {
-        let records = self.repository.find_all(published).await?;
-        Ok(records.into_iter().map(ExampleResponse::from).collect())
+    async fn list(&self, query: ListExampleQuery) -> AppResult<ExamplePage> {
+        let per_page = query.per_page.unwrap_or(DEFAULT_PER_PAGE).clamp(1, MAX_PER_PAGE);
+        let page = query.page.unwrap_or(DEFAULT_PAGE).max(DEFAULT_PAGE);
+
+        let (records, total) = self.repository.find_page(&query, page, per_page).await?;
+
+        Ok(ExamplePage {
+            items: records.into_iter().map(ExampleResponse::from).collect(),
+            total,
+            page,
+            per_page,
+            total_pages: total.div_ceil(per_page),
+        })
     }
 
     async fn get(&self, id: i32) -> AppResult<ExampleResponse> {

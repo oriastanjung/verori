@@ -76,6 +76,45 @@
         ],
         "type": "object"
       },
+      "ExamplePage": {
+        "description": "One page of results plus the counts a table needs for its footer.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExampleResponse"
+            },
+            "type": "array"
+          },
+          "page": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "per_page": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_pages": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "per_page",
+          "total_pages"
+        ],
+        "type": "object"
+      },
       "ExampleResponse": {
         "properties": {
           "content": {
@@ -682,6 +721,69 @@
         "operationId": "list_examples",
         "parameters": [
           {
+            "description": "One based.",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "format": "int64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Matches the title or the content.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "One of: id, title, published, created_at.",
+            "in": "query",
+            "name": "sort_by",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "asc or desc.",
+            "in": "query",
+            "name": "sort_dir",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
             "in": "query",
             "name": "published",
             "required": false,
@@ -698,10 +800,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ExampleResponse"
-                  },
-                  "type": "array"
+                  "$ref": "#/components/schemas/ExamplePage"
                 }
               }
             },
