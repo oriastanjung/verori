@@ -12,7 +12,7 @@ I built VERORI to solve three problems at once:
 
 - **One source of truth for the API.** Routes are declared once in Rust with `utoipa`. The OpenAPI spec, the Scalar docs page, and the TypeScript types all come from that same declaration. Rename a field in Rust and the Next.js build fails until you fix the caller.
 - **A queue you already run.** Jobs live in a Postgres `jobs` table; `NOTIFY` is only a wake-up signal, and a poll interval covers any that are missed. Retries use exponential backoff, exhausted jobs land in a dead letter queue you can redrive, publishes can be deduplicated with an idempotency key, and leases are reclaimed so a job is never stranded when a worker dies. Workers claim rows with `FOR UPDATE SKIP LOCKED`, so you can run as many as you like.
-- **Tiny production images.** The Rust services build to `scratch` with static musl binaries: api ~6 MB, worker ~5 MB. The Next.js image uses standalone output at ~323 MB.
+- **Small production images.** The Rust services build to `scratch` with static musl binaries: api ~13 MB (it carries Better Auth, which pulls webauthn and OpenSSL), worker ~6 MB. The Next.js image uses standalone output at ~325 MB.
 - **Clean architecture, enforced by shape.** Every module is the same five files: route, controller, service, repository, dto. Business rules never leak into handlers, and SQL never leaks into services.
 - **AI native.** See below.
 
@@ -76,6 +76,13 @@ Each app owns its own `.env`; there is no root one.
 | API docs (Scalar) | http://localhost:3001/docs |
 | OpenAPI spec | http://localhost:3001/openapi.json |
 
+Then `just seed` to create the development accounts:
+
+| Account | Credentials | Lands on |
+| --- | --- | --- |
+| Admin | `admin@verori.com` / `Admin123!` | `/admin` |
+| User | `user@verori.com` / `User123!` | `/dashboard` |
+
 Edit a Rust route or DTO and the api restarts, the spec is re-exported, and `apps/web/src/generated/api-types.ts` is rewritten — no manual step.
 
 ## Common tasks
@@ -90,6 +97,8 @@ just test                  # cargo test across the workspace
 just docker-build          # build all three images
 just queue-status          # job counts per status, per channel
 just queue-redrive <chan>  # move dead jobs back to pending
+just seed                  # create the development accounts
+just e2e                   # browser tests, web through to the api
 ```
 
 Run `just` with no arguments to list everything.
