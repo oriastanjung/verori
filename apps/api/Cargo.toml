@@ -35,6 +35,7 @@ utoipa.workspace = true
 utoipa-axum.workspace = true
 utoipa-scalar.workspace = true
 chrono.workspace = true
+uuid.workspace = true
 auth = { path = "../../packages/auth" }
 transactional = { path = "../../packages/transactional" }
 better-auth.workspace = true

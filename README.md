@@ -27,7 +27,7 @@ does about it, and where the gap is.
 
 | OWASP 2021 | What is in place |
 | --- | --- |
-| A01 Broken access control | Route guards run before the handler. Roles are declared in one file. A member calling an admin route gets 403, proven by a test. |
+| A01 Broken access control | Route guards run before the handler. Roles are declared in one file. A member calling an admin route gets 403, proven by a test. Primary keys are UUIDv7, so a caller cannot walk the table by guessing the next number, and the row count stays private. |
 | A02 Cryptographic failures | Passwords and sessions are handled by Better Auth, not by hand. `AUTH_SECRET` must be at least 32 characters or the api refuses to start. The session cookie is httpOnly, so scripts cannot read it. |
 | A03 Injection | Every query goes through SeaORM or sqlx with bind parameters. No user input is ever formatted into SQL. A search of `' OR 1=1--` returns zero rows because it is matched as text. |
 | A04 Insecure design | Writes run inside one transaction and roll back together. The queue is at-least-once with a retry budget and a dead letter queue rather than silent loss. |

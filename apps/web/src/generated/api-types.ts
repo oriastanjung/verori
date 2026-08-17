@@ -718,14 +718,14 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         BulkDeleteExampleRequest: {
-            ids: number[];
+            ids: string[];
         };
         BulkResultResponse: {
             /** Format: int64 */
             affected: number;
         };
         BulkUpdateExampleRequest: {
-            ids: number[];
+            ids: string[];
             published: boolean;
         };
         CreateExampleRequest: {
@@ -751,16 +751,16 @@ export interface components {
             content?: string | null;
             /** Format: date-time */
             created_at: string;
-            /** Format: int32 */
-            id: number;
+            /** Format: uuid */
+            id: string;
             published: boolean;
             title: string;
             /** Format: date-time */
             updated_at: string;
         };
         PublishJobResponse: {
-            /** Format: int64 */
-            job_id: number;
+            /** Format: uuid */
+            job_id: string;
         };
         UpdateExampleRequest: {
             content?: string | null;
@@ -1603,7 +1603,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Example id */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -1641,7 +1641,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Example id */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -1683,7 +1683,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Example id */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -1719,7 +1719,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Example id */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };

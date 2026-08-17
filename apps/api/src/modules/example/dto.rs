@@ -1,4 +1,5 @@
 use chrono::{DateTime, FixedOffset};
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
@@ -6,7 +7,7 @@ use db::entities::example;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ExampleResponse {
-    pub id: i32,
+    pub id: Uuid,
     pub title: String,
     pub content: Option<String>,
     pub published: bool,
@@ -42,13 +43,13 @@ pub struct UpdateExampleRequest {
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct BulkUpdateExampleRequest {
-    pub ids: Vec<i32>,
+    pub ids: Vec<Uuid>,
     pub published: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct BulkDeleteExampleRequest {
-    pub ids: Vec<i32>,
+    pub ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -58,7 +59,7 @@ pub struct BulkResultResponse {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PublishJobResponse {
-    pub job_id: i64,
+    pub job_id: Uuid,
 }
 
 /// Paging, searching, sorting and filtering for the list endpoint.

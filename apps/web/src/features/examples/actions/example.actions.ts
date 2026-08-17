@@ -22,11 +22,11 @@ function readText(formData: FormData, field: string): string {
   return String(formData.get(field) ?? "").trim();
 }
 
-function readIds(formData: FormData): number[] {
+function readIds(formData: FormData): string[] {
   return formData
     .getAll("ids")
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value));
+    .map((value) => String(value).trim())
+    .filter((value) => value.length > 0);
 }
 
 export async function createExampleAction(
@@ -56,7 +56,7 @@ export async function updateExampleAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const id = Number(formData.get("id"));
+  const id = String(formData.get("id") ?? "");
   const title = readText(formData, "title");
   const content = readText(formData, "content");
   const published = formData.get("published") === "on";
@@ -82,7 +82,7 @@ export async function deleteExampleAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const id = Number(formData.get("id"));
+  const id = String(formData.get("id") ?? "");
 
   try {
     await exampleService.deleteExample(id);
@@ -97,7 +97,7 @@ export async function publishExampleAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const id = Number(formData.get("id"));
+  const id = String(formData.get("id") ?? "");
 
   try {
     const jobId = await exampleService.publishExampleToQueue(id);

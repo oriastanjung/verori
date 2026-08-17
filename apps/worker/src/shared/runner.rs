@@ -54,53 +54,91 @@ impl Runner {
     }
 
     pub async fn run(self: Arc<Self>, shutdown: CancellationToken) {
-        let channels = self.channels();
-
-        let listener = match queue::listen(&self.pool, &channels).await {
-            Ok(listener) => listener,
-            Err(error) => {
-                tracing::error!(error = %error, "failed to start postgres listener");
-                return;
-            }
-        };
-
         tracing::info!(
-            channels = ?channels.iter().map(|item| item.as_str()).collect::<Vec<_>>(),
+            channels = ?self.channels().iter().map(|item| item.as_str()).collect::<Vec<_>>(),
             concurrency = self.config.concurrency,
             batch_size = self.config.batch_size,
-            "worker listening"
+            poll_interval = ?self.config.poll_interval,
+            "worker started"
         );
 
+        // Three independent loops. Polling is what guarantees progress, so a
+        // broken listener slows the worker down but never stops it.
         let reaper = tokio::spawn({
             let runner = Arc::clone(&self);
             let shutdown = shutdown.clone();
             async move { runner.reap_loop(shutdown).await }
         });
 
-        let mut notifications = listener.into_stream();
+        let listener = tokio::spawn({
+            let runner = Arc::clone(&self);
+            let shutdown = shutdown.clone();
+            async move { runner.listen_loop(shutdown).await }
+        });
+
+        self.poll_loop(shutdown).await;
+
+        tracing::info!("worker stopped accepting jobs");
+        listener.abort();
+        let _ = reaper.await;
+    }
+
+    /// Claims whatever is due, on a fixed interval. This is the guarantee.
+    async fn poll_loop(&self, shutdown: CancellationToken) {
         let mut poll = tokio::time::interval(self.config.poll_interval);
         poll.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
-        self.drain_all(&shutdown).await;
-
         loop {
             tokio::select! {
-                _ = shutdown.cancelled() => break,
+                _ = shutdown.cancelled() => return,
                 _ = poll.tick() => self.drain_all(&shutdown).await,
-                notification = notifications.next() => {
-                    match notification {
-                        Some(Ok(_)) => self.drain_all(&shutdown).await,
-                        Some(Err(error)) => {
-                            tracing::error!(error = %error, "listener error, falling back to polling");
-                        }
-                        None => break,
-                    }
-                }
             }
         }
+    }
 
-        tracing::info!("worker stopped accepting jobs");
-        let _ = reaper.await;
+    /// Reacts to NOTIFY so a job starts in milliseconds rather than waiting for
+    /// the next poll. A dropped connection is reconnected, because losing the
+    /// listener used to end the worker for good.
+    async fn listen_loop(&self, shutdown: CancellationToken) {
+        let channels = self.channels();
+
+        loop {
+            if shutdown.is_cancelled() {
+                return;
+            }
+
+            match queue::listen(&self.pool, &channels).await {
+                Ok(listener) => {
+                    tracing::info!("listening for notifications");
+                    let mut notifications = listener.into_stream();
+
+                    loop {
+                        tokio::select! {
+                            _ = shutdown.cancelled() => return,
+                            notification = notifications.next() => match notification {
+                                Some(Ok(_)) => self.drain_all(&shutdown).await,
+                                Some(Err(error)) => {
+                                    tracing::warn!(error = %error, "listener failed, reconnecting");
+                                    break;
+                                }
+                                None => {
+                                    tracing::warn!("listener closed, reconnecting");
+                                    break;
+                                }
+                            },
+                        }
+                    }
+                }
+                Err(error) => {
+                    tracing::warn!(error = %error, "could not start listener, retrying");
+                }
+            }
+
+            tokio::select! {
+                _ = shutdown.cancelled() => return,
+                _ = tokio::time::sleep(self.config.poll_interval) => {}
+            }
+        }
     }
 
     /// Returns leases that expired because a worker died mid-job.
@@ -194,11 +232,11 @@ async fn run_job(pool: &PgPool, consumer: &dyn Consumer, job: Job, retry_in: Dur
     match outcome {
         Ok(()) => {
             if let Err(error) = queue::complete(pool, job.id).await {
-                tracing::error!(job_id = job.id, error = %error, "failed to mark job done");
+                tracing::error!(job_id = %job.id, error = %error, "failed to mark job done");
                 return;
             }
             tracing::info!(
-                job_id = job.id,
+                job_id = %job.id,
                 channel = %job.channel,
                 attempt = job.attempts,
                 status = "done",
@@ -211,7 +249,7 @@ async fn run_job(pool: &PgPool, consumer: &dyn Consumer, job: Job, retry_in: Dur
 
             match queue::fail(pool, job.id, &reason, retry_in).await {
                 Ok(true) => tracing::error!(
-                    job_id = job.id,
+                    job_id = %job.id,
                     channel = %job.channel,
                     attempt = job.attempts,
                     status = "dead",
@@ -220,7 +258,7 @@ async fn run_job(pool: &PgPool, consumer: &dyn Consumer, job: Job, retry_in: Dur
                     "job moved to the dead letter queue"
                 ),
                 Ok(false) => tracing::warn!(
-                    job_id = job.id,
+                    job_id = %job.id,
                     channel = %job.channel,
                     attempt = job.attempts,
                     max_attempts = job.max_attempts,
@@ -231,7 +269,7 @@ async fn run_job(pool: &PgPool, consumer: &dyn Consumer, job: Job, retry_in: Dur
                     "job"
                 ),
                 Err(mark_error) => tracing::error!(
-                    job_id = job.id,
+                    job_id = %job.id,
                     error = %mark_error,
                     "failed to record job failure"
                 ),

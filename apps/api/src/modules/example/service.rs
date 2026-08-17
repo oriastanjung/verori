@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde_json::json;
 use sea_orm::DatabaseConnection;
 use sqlx::PgPool;
+use uuid::Uuid;
 use transactional::transactional;
 
 use queue::{PublishOptions, QueueChannel};
@@ -27,13 +28,13 @@ const MAX_PER_PAGE: u64 = 100;
 #[async_trait]
 pub trait ExampleService: Send + Sync {
     async fn list(&self, query: ListExampleQuery) -> AppResult<ExamplePage>;
-    async fn get(&self, id: i32) -> AppResult<ExampleResponse>;
+    async fn get(&self, id: Uuid) -> AppResult<ExampleResponse>;
     async fn create(&self, input: CreateExampleRequest) -> AppResult<ExampleResponse>;
-    async fn update(&self, id: i32, input: UpdateExampleRequest) -> AppResult<ExampleResponse>;
-    async fn delete(&self, id: i32) -> AppResult<()>;
+    async fn update(&self, id: Uuid, input: UpdateExampleRequest) -> AppResult<ExampleResponse>;
+    async fn delete(&self, id: Uuid) -> AppResult<()>;
     async fn bulk_update(&self, input: BulkUpdateExampleRequest) -> AppResult<u64>;
     async fn bulk_delete(&self, input: BulkDeleteExampleRequest) -> AppResult<u64>;
-    async fn publish_to_queue(&self, id: i32) -> AppResult<i64>;
+    async fn publish_to_queue(&self, id: Uuid) -> AppResult<Uuid>;
 }
 
 pub struct DefaultExampleService {
@@ -43,7 +44,7 @@ pub struct DefaultExampleService {
 }
 
 impl DefaultExampleService {
-    fn ensure_bulk_size(ids: &[i32]) -> AppResult<()> {
+    fn ensure_bulk_size(ids: &[Uuid]) -> AppResult<()> {
         if ids.is_empty() {
             return Err(AppError::BadRequest("ids must not be empty".to_string()));
         }
@@ -94,14 +95,14 @@ impl ExampleService for DefaultExampleService {
         })
     }
 
-    async fn get(&self, id: i32) -> AppResult<ExampleResponse> {
+    async fn get(&self, id: Uuid) -> AppResult<ExampleResponse> {
         let record = self
             .repository
             .find_by_id(id)
             .await?
-            .ok_or(AppError::NotFound {
+            .ok_or_else(|| AppError::NotFound {
                 resource: RESOURCE,
-                id,
+                id: id.to_string(),
             })?;
 
         Ok(ExampleResponse::from(record))
@@ -129,28 +130,28 @@ impl ExampleService for DefaultExampleService {
     }
 
     #[tx]
-    async fn update(&self, id: i32, input: UpdateExampleRequest) -> AppResult<ExampleResponse> {
+    async fn update(&self, id: Uuid, input: UpdateExampleRequest) -> AppResult<ExampleResponse> {
         Self::ensure_within_limits(input.title.as_deref(), input.content.as_deref())?;
 
         let record = self
             .repository
             .update(id, input)
             .await?
-            .ok_or(AppError::NotFound {
+            .ok_or_else(|| AppError::NotFound {
                 resource: RESOURCE,
-                id,
+                id: id.to_string(),
             })?;
 
         Ok(ExampleResponse::from(record))
     }
 
-    async fn delete(&self, id: i32) -> AppResult<()> {
+    async fn delete(&self, id: Uuid) -> AppResult<()> {
         let affected = self.repository.delete(id).await?;
 
         if affected == 0 {
             return Err(AppError::NotFound {
                 resource: RESOURCE,
-                id,
+                id: id.to_string(),
             });
         }
 
@@ -174,14 +175,14 @@ impl ExampleService for DefaultExampleService {
         Ok(affected)
     }
 
-    async fn publish_to_queue(&self, id: i32) -> AppResult<i64> {
+    async fn publish_to_queue(&self, id: Uuid) -> AppResult<Uuid> {
         let record = self
             .repository
             .find_by_id(id)
             .await?
-            .ok_or(AppError::NotFound {
+            .ok_or_else(|| AppError::NotFound {
                 resource: RESOURCE,
-                id,
+                id: id.to_string(),
             })?;
 
         let job_id = queue::publish(

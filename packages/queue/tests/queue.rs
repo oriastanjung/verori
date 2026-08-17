@@ -9,6 +9,7 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use tokio::sync::Mutex;
 
 use queue::{PublishOptions, QueueChannel};
+use uuid::Uuid;
 
 const CHANNEL: QueueChannel = QueueChannel::ExampleCreated;
 
@@ -34,7 +35,7 @@ async fn reset(pool: &PgPool) {
         .expect("cleanup failed");
 }
 
-async fn status_of(pool: &PgPool, job_id: i64) -> String {
+async fn status_of(pool: &PgPool, job_id: Uuid) -> String {
     let (status,): (String,) = sqlx::query_as("SELECT status FROM jobs WHERE id = $1")
         .bind(job_id)
         .fetch_one(pool)
@@ -94,7 +95,10 @@ async fn failing_job_retries_then_lands_in_the_dead_letter_queue() {
     let claimed = queue::claim(&pool, CHANNEL, 10, Duration::from_secs(30))
         .await
         .unwrap();
-    assert!(claimed.iter().any(|job| job.id == job_id));
+    assert!(
+        claimed.iter().any(|job| job.id == job_id),
+        "job went to another consumer, so a worker is running against this database"
+    );
 
     let dead = queue::fail(&pool, job_id, "boom", Duration::from_secs(0))
         .await
@@ -106,7 +110,10 @@ async fn failing_job_retries_then_lands_in_the_dead_letter_queue() {
     let claimed = queue::claim(&pool, CHANNEL, 10, Duration::from_secs(30))
         .await
         .unwrap();
-    assert!(claimed.iter().any(|job| job.id == job_id));
+    assert!(
+        claimed.iter().any(|job| job.id == job_id),
+        "job went to another consumer, so a worker is running against this database"
+    );
 
     let dead = queue::fail(&pool, job_id, "boom again", Duration::from_secs(0))
         .await
@@ -141,7 +148,10 @@ async fn expired_lease_returns_the_job_to_the_queue() {
     let claimed = queue::claim(&pool, CHANNEL, 10, Duration::from_secs(0))
         .await
         .unwrap();
-    assert!(claimed.iter().any(|job| job.id == job_id));
+    assert!(
+        claimed.iter().any(|job| job.id == job_id),
+        "job went to another consumer, so a worker is running against this database"
+    );
     assert_eq!(status_of(&pool, job_id).await, "processing");
 
     let reclaimed = queue::reclaim_expired(&pool).await.unwrap();
@@ -178,7 +188,10 @@ async fn a_claimed_job_is_not_handed_to_a_second_worker() {
         .await
         .unwrap();
 
-    assert!(first.iter().any(|job| job.id == job_id));
+    assert!(
+        first.iter().any(|job| job.id == job_id),
+        "job went to another consumer, so a worker is running against this database"
+    );
     assert!(
         !second.iter().any(|job| job.id == job_id),
         "a leased job must not be claimed twice"

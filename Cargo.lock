@@ -169,6 +169,7 @@ dependencies = [
  "utoipa",
  "utoipa-axum",
  "utoipa-scalar",
+ "uuid",
 ]
 
 [[package]]
@@ -1186,6 +1187,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -2349,6 +2351,7 @@ version = "0.1.0"
 dependencies = [
  "sea-orm-migration",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -2836,6 +2839,7 @@ dependencies = [
  "sqlx",
  "thiserror 2.0.20",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -4530,6 +4534,7 @@ dependencies = [
  "quote",
  "regex",
  "syn 2.0.119",
+ "uuid",
 ]
 
 [[package]]
@@ -4985,6 +4990,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "transactional",
+ "uuid",
 ]
 
 [[package]]

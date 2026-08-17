@@ -90,10 +90,11 @@ function scaffoldApi(name: string): void {
     join(base, "dto.rs"),
     `use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ${pascal}Response {
-    pub id: i32,
+    pub id: Uuid,
     pub name: String,
 }
 
@@ -368,10 +369,11 @@ function scaffoldWorker(name: string, channel: string): void {
   write(
     join(base, "dto.rs"),
     `use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct ${pascal}Payload {
-    pub id: i32,
+    pub id: Uuid,
 }
 `,
   );
@@ -382,12 +384,13 @@ pub struct ${pascal}Payload {
 
 use async_trait::async_trait;
 use sea_orm::{DatabaseConnection, DbErr};
+use uuid::Uuid;
 
 use db::tx;
 
 #[async_trait]
 pub trait ${pascal}Repository: Send + Sync {
-    async fn exists(&self, id: i32) -> Result<bool, DbErr>;
+    async fn exists(&self, id: Uuid) -> Result<bool, DbErr>;
 }
 
 pub struct SeaOrm${pascal}Repository {
@@ -396,7 +399,7 @@ pub struct SeaOrm${pascal}Repository {
 
 #[async_trait]
 impl ${pascal}Repository for SeaOrm${pascal}Repository {
-    async fn exists(&self, _id: i32) -> Result<bool, DbErr> {
+    async fn exists(&self, _id: Uuid) -> Result<bool, DbErr> {
         // Query through tx::conn so the call joins the service transaction.
         let _connection = tx::conn(&self.db);
         Ok(true)
@@ -416,13 +419,14 @@ pub fn create_${name}_repository(db: DatabaseConnection) -> Arc<dyn ${pascal}Rep
 use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 use transactional::transactional;
+use uuid::Uuid;
 
 use crate::modules::${name}::repository::${pascal}Repository;
 use crate::shared::error::{WorkerError, WorkerResult};
 
 #[async_trait]
 pub trait ${pascal}Service: Send + Sync {
-    async fn handle(&self, id: i32) -> WorkerResult<()>;
+    async fn handle(&self, id: Uuid) -> WorkerResult<()>;
 }
 
 pub struct Default${pascal}Service {
@@ -436,12 +440,12 @@ pub struct Default${pascal}Service {
 #[async_trait]
 impl ${pascal}Service for Default${pascal}Service {
     #[tx]
-    async fn handle(&self, id: i32) -> WorkerResult<()> {
+    async fn handle(&self, id: Uuid) -> WorkerResult<()> {
         if !self.repository.exists(id).await? {
             return Err(WorkerError::InvalidPayload(format!("${name} {id} does not exist")));
         }
 
-        tracing::info!(id = id, "${name} handled");
+        tracing::info!(%id, "${name} handled");
         Ok(())
     }
 }
@@ -530,7 +534,7 @@ function scaffoldWeb(name: string): void {
   write(
     join(base, "dtos", `${slug}.dto.ts`),
     `export type ${pascal} = {
-  id: number;
+  id: string;
   name: string;
 };
 

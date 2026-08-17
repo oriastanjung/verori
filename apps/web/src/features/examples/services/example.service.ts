@@ -19,7 +19,7 @@ export async function listExamples(query: ExampleListQuery): Promise<ExamplePage
   return data;
 }
 
-export async function getExample(id: number): Promise<Example> {
+export async function getExample(id: string): Promise<Example> {
   const { data, error } = await apiClient.GET("/api/examples/{id}", {
     params: { path: { id } },
   });
@@ -36,7 +36,7 @@ export async function createExample(input: CreateExampleInput): Promise<Example>
 }
 
 export async function updateExample(
-  id: number,
+  id: string,
   input: UpdateExampleInput,
 ): Promise<Example> {
   const { data, error } = await apiClient.PUT("/api/examples/{id}", {
@@ -48,7 +48,7 @@ export async function updateExample(
   return data;
 }
 
-export async function deleteExample(id: number): Promise<void> {
+export async function deleteExample(id: string): Promise<void> {
   const { error } = await apiClient.DELETE("/api/examples/{id}", {
     params: { path: { id } },
   });
@@ -57,7 +57,7 @@ export async function deleteExample(id: number): Promise<void> {
 }
 
 export async function bulkPublishExamples(
-  ids: number[],
+  ids: string[],
   published: boolean,
 ): Promise<number> {
   const { data, error } = await apiClient.PATCH("/api/examples/bulk", {
@@ -68,7 +68,7 @@ export async function bulkPublishExamples(
   return data.affected;
 }
 
-export async function bulkDeleteExamples(ids: number[]): Promise<number> {
+export async function bulkDeleteExamples(ids: string[]): Promise<number> {
   const { data, error } = await apiClient.POST("/api/examples/bulk-delete", {
     body: { ids },
   });
@@ -77,7 +77,7 @@ export async function bulkDeleteExamples(ids: number[]): Promise<number> {
   return data.affected;
 }
 
-export async function publishExampleToQueue(id: number): Promise<number> {
+export async function publishExampleToQueue(id: string): Promise<string> {
   const { data, error } = await apiClient.POST("/api/examples/{id}/publish", {
     params: { path: { id } },
   });

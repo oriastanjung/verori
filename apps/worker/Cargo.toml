@@ -23,6 +23,7 @@ thiserror.workspace = true
 async-trait.workspace = true
 dotenvy.workspace = true
 chrono.workspace = true
+uuid.workspace = true
 futures.workspace = true
 tokio-util.workspace = true
 db = { path = "../../packages/db" }

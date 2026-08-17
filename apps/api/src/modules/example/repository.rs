@@ -10,6 +10,7 @@ use sea_orm::{
 
 use db::entities::example;
 use db::tx;
+use uuid::Uuid;
 
 use crate::modules::example::dto::{CreateExampleRequest, ListExampleQuery, UpdateExampleRequest};
 
@@ -63,16 +64,16 @@ pub trait ExampleRepository: Send + Sync {
         page: u64,
         per_page: u64,
     ) -> Result<(Vec<example::Model>, u64), DbErr>;
-    async fn find_by_id(&self, id: i32) -> Result<Option<example::Model>, DbErr>;
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<example::Model>, DbErr>;
     async fn create(&self, input: CreateExampleRequest) -> Result<example::Model, DbErr>;
     async fn update(
         &self,
-        id: i32,
+        id: Uuid,
         input: UpdateExampleRequest,
     ) -> Result<Option<example::Model>, DbErr>;
-    async fn delete(&self, id: i32) -> Result<u64, DbErr>;
-    async fn bulk_set_published(&self, ids: &[i32], published: bool) -> Result<u64, DbErr>;
-    async fn bulk_delete(&self, ids: &[i32]) -> Result<u64, DbErr>;
+    async fn delete(&self, id: Uuid) -> Result<u64, DbErr>;
+    async fn bulk_set_published(&self, ids: &[Uuid], published: bool) -> Result<u64, DbErr>;
+    async fn bulk_delete(&self, ids: &[Uuid]) -> Result<u64, DbErr>;
 }
 
 pub struct SeaOrmExampleRepository {
@@ -97,12 +98,14 @@ impl ExampleRepository for SeaOrmExampleRepository {
         Ok((items, total))
     }
 
-    async fn find_by_id(&self, id: i32) -> Result<Option<example::Model>, DbErr> {
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<example::Model>, DbErr> {
         example::Entity::find_by_id(id).one(&tx::conn(&self.db)).await
     }
 
     async fn create(&self, input: CreateExampleRequest) -> Result<example::Model, DbErr> {
         let record = example::ActiveModel {
+            // UUIDv7 keeps rows in creation order, which a random uuid would not.
+            id: Set(Uuid::now_v7()),
             title: Set(input.title),
             content: Set(input.content),
             published: Set(false),
@@ -114,7 +117,7 @@ impl ExampleRepository for SeaOrmExampleRepository {
 
     async fn update(
         &self,
-        id: i32,
+        id: Uuid,
         input: UpdateExampleRequest,
     ) -> Result<Option<example::Model>, DbErr> {
         let Some(found) = example::Entity::find_by_id(id).one(&tx::conn(&self.db)).await? else {
@@ -138,12 +141,12 @@ impl ExampleRepository for SeaOrmExampleRepository {
         Ok(Some(updated))
     }
 
-    async fn delete(&self, id: i32) -> Result<u64, DbErr> {
+    async fn delete(&self, id: Uuid) -> Result<u64, DbErr> {
         let result = example::Entity::delete_by_id(id).exec(&tx::conn(&self.db)).await?;
         Ok(result.rows_affected)
     }
 
-    async fn bulk_set_published(&self, ids: &[i32], published: bool) -> Result<u64, DbErr> {
+    async fn bulk_set_published(&self, ids: &[Uuid], published: bool) -> Result<u64, DbErr> {
         let result = example::Entity::update_many()
             .col_expr(example::Column::Published, Expr::value(published))
             .col_expr(
@@ -157,7 +160,7 @@ impl ExampleRepository for SeaOrmExampleRepository {
         Ok(result.rows_affected)
     }
 
-    async fn bulk_delete(&self, ids: &[i32]) -> Result<u64, DbErr> {
+    async fn bulk_delete(&self, ids: &[Uuid]) -> Result<u64, DbErr> {
         let result = example::Entity::delete_many()
             .filter(example::Column::Id.is_in(ids.to_vec()))
             .exec(&tx::conn(&self.db))

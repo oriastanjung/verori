@@ -9,8 +9,10 @@ tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true }
+uuid.workspace = true
 sqlx = { workspace = true, features = ["json"] }
 serde_json.workspace = true

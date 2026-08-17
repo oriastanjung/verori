@@ -7,6 +7,7 @@ use std::time::Duration;
 use serde_json::Value;
 use sqlx::postgres::{PgListener, PgPool};
 use thiserror::Error;
+use uuid::Uuid;
 
 /// Job lifecycle. A job is always in exactly one of these states.
 pub const STATUS_PENDING: &str = "pending";
@@ -25,7 +26,7 @@ pub enum QueueError {
 
 #[derive(Debug, Clone)]
 pub struct Job {
-    pub id: i64,
+    pub id: Uuid,
     pub channel: QueueChannel,
     pub payload: Value,
     pub attempts: i32,
@@ -70,16 +71,19 @@ pub async fn publish(
     channel: QueueChannel,
     payload: Value,
     options: PublishOptions,
-) -> Result<i64, QueueError> {
+) -> Result<Uuid, QueueError> {
     let delay_seconds = to_interval(options.delay.unwrap_or_default());
 
-    let inserted: Option<(i64,)> = sqlx::query_as(
-        "INSERT INTO jobs (channel, payload, status, attempts, max_attempts, available_at, idempotency_key)
-         VALUES ($1, $2, 'pending', 0, COALESCE($3, 5), now() + make_interval(secs => $4), $5)
+    // The id is generated here rather than by the database, because UUIDv7
+    // carries the creation time in its first 48 bits.
+    let inserted: Option<(Uuid,)> = sqlx::query_as(
+        "INSERT INTO jobs (id, channel, payload, status, attempts, max_attempts, available_at, idempotency_key)
+         VALUES ($1, $2, $3, 'pending', 0, COALESCE($4, 5), now() + make_interval(secs => $5), $6)
          ON CONFLICT (channel, idempotency_key) WHERE idempotency_key IS NOT NULL
          DO NOTHING
          RETURNING id",
     )
+    .bind(Uuid::now_v7())
     .bind(channel.as_str())
     .bind(&payload)
     .bind(options.max_attempts)
@@ -98,7 +102,7 @@ pub async fn publish(
     }
 
     // The insert was skipped, so an identical job is already queued.
-    let (existing,): (i64,) = sqlx::query_as(
+    let (existing,): (Uuid,) = sqlx::query_as(
         "SELECT id FROM jobs WHERE channel = $1 AND idempotency_key = $2",
     )
     .bind(channel.as_str())
@@ -127,7 +131,7 @@ pub async fn claim(
     batch_size: i64,
     lease: Duration,
 ) -> Result<Vec<Job>, QueueError> {
-    let rows: Vec<(i64, String, Value, i32, i32)> = sqlx::query_as(
+    let rows: Vec<(Uuid, String, Value, i32, i32)> = sqlx::query_as(
         "UPDATE jobs
          SET status = 'processing',
              attempts = attempts + 1,
@@ -165,7 +169,7 @@ pub async fn claim(
         .collect()
 }
 
-pub async fn complete(pool: &PgPool, job_id: i64) -> Result<(), QueueError> {
+pub async fn complete(pool: &PgPool, job_id: Uuid) -> Result<(), QueueError> {
     sqlx::query(
         "UPDATE jobs
          SET status = 'done', locked_until = NULL, last_error = NULL, updated_at = now()
@@ -181,7 +185,7 @@ pub async fn complete(pool: &PgPool, job_id: i64) -> Result<(), QueueError> {
 /// budget is used up.
 pub async fn fail(
     pool: &PgPool,
-    job_id: i64,
+    job_id: Uuid,
     reason: &str,
     retry_in: Duration,
 ) -> Result<bool, QueueError> {

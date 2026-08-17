@@ -4,6 +4,7 @@ use axum::Json;
 
 use crate::shared::error::{AppResult, ErrorBody};
 use crate::shared::state::AppState;
+use uuid::Uuid;
 use crate::modules::example::dto::{
     BulkDeleteExampleRequest, BulkResultResponse, BulkUpdateExampleRequest, CreateExampleRequest,
     ExamplePage, ExampleResponse, ListExampleQuery, PublishJobResponse, UpdateExampleRequest,
@@ -31,7 +32,7 @@ pub async fn list_examples(
     get,
     path = "/examples/{id}",
     tag = "example",
-    params(("id" = i32, Path, description = "Example id")),
+    params(("id" = Uuid, Path, description = "Example id")),
     responses(
         (status = 200, body = ExampleResponse),
         (status = 404, body = ErrorBody),
@@ -40,7 +41,7 @@ pub async fn list_examples(
 )]
 pub async fn get_example(
     State(state): State<AppState>,
-    Path(id): Path<i32>,
+    Path(id): Path<Uuid>,
 ) -> AppResult<Json<ExampleResponse>> {
     let example = state.example_service.get(id).await?;
     Ok(Json(example))
@@ -69,7 +70,7 @@ pub async fn create_example(
     put,
     path = "/examples/{id}",
     tag = "example",
-    params(("id" = i32, Path, description = "Example id")),
+    params(("id" = Uuid, Path, description = "Example id")),
     request_body = UpdateExampleRequest,
     responses(
         (status = 200, body = ExampleResponse),
@@ -79,7 +80,7 @@ pub async fn create_example(
 )]
 pub async fn update_example(
     State(state): State<AppState>,
-    Path(id): Path<i32>,
+    Path(id): Path<Uuid>,
     Json(payload): Json<UpdateExampleRequest>,
 ) -> AppResult<Json<ExampleResponse>> {
     let example = state.example_service.update(id, payload).await?;
@@ -90,7 +91,7 @@ pub async fn update_example(
     delete,
     path = "/examples/{id}",
     tag = "example",
-    params(("id" = i32, Path, description = "Example id")),
+    params(("id" = Uuid, Path, description = "Example id")),
     responses(
         (status = 204),
         (status = 404, body = ErrorBody),
@@ -99,7 +100,7 @@ pub async fn update_example(
 )]
 pub async fn delete_example(
     State(state): State<AppState>,
-    Path(id): Path<i32>,
+    Path(id): Path<Uuid>,
 ) -> AppResult<StatusCode> {
     state.example_service.delete(id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -147,7 +148,7 @@ pub async fn bulk_delete_examples(
     post,
     path = "/examples/{id}/publish",
     tag = "example",
-    params(("id" = i32, Path, description = "Example id")),
+    params(("id" = Uuid, Path, description = "Example id")),
     responses(
         (status = 202, body = PublishJobResponse),
         (status = 404, body = ErrorBody),
@@ -156,7 +157,7 @@ pub async fn bulk_delete_examples(
 )]
 pub async fn publish_example(
     State(state): State<AppState>,
-    Path(id): Path<i32>,
+    Path(id): Path<Uuid>,
 ) -> AppResult<(StatusCode, Json<PublishJobResponse>)> {
     let job_id = state.example_service.publish_to_queue(id).await?;
     Ok((StatusCode::ACCEPTED, Json(PublishJobResponse { job_id })))

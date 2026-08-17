@@ -120,7 +120,7 @@ export function ExampleCrud({ page, canManage }: Props) {
   );
 }
 
-function SendToQueueButton({ exampleId }: { exampleId: number }) {
+function SendToQueueButton({ exampleId }: { exampleId: string }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     publishExampleAction,
     INITIAL_ACTION_STATE,

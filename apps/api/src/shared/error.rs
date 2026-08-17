@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("{resource} with id {id} not found")]
-    NotFound { resource: &'static str, id: i32 },
+    NotFound { resource: &'static str, id: String },
 
     #[error("invalid request: {0}")]
     BadRequest(String),
