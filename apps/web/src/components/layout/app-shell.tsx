@@ -18,6 +18,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
 import type { NavGroup } from "@/components/layout/nav-items";
 import type { AuthUser } from "@/features/auth/dtos/auth.dto";
@@ -108,6 +109,10 @@ export function AppShell({ title, homeHref, groups, user, children }: Props) {
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
           <span className="text-sm font-medium">{title}</span>
+
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-6 p-6">{children}</div>

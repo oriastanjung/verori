@@ -204,7 +204,8 @@ src/app/(public)/          marketing pages, statically rendered
 src/app/(auth)/auth/*      sign in, sign up, forgot and reset password
 src/app/(core-app)/        the signed-in app, sidebar group "Main Menu"
 src/app/(admin)/admin/*    admin only, groups "Master Data" and "User Management"
-src/components/ui/         shadcn components, do not edit by hand
+src/components/ui/         shadcn components, do not edit by hand except
+                           input.tsx, which adds the password eye
 src/components/composite/  AppCrud and its parts, shared by every module
 src/components/layout/     the signed-in shell and the sidebar
 src/features/<name>/
@@ -217,6 +218,15 @@ src/features/<name>/
 src/generated/api-types.ts generated, never edit
 src/lib/api-client.ts      typed openapi-fetch client
 ```
+
+### Theme and inputs
+
+- The theme comes from `next-themes` in the root layout, writing `dark` onto
+  `<html>`, which is what `globals.css` keys off. `ThemeToggle` sits in the app
+  header and on the auth pages.
+- **Any `<Input type="password">` gets a show and hide eye on its own.** That
+  lives inside `components/ui/input.tsx`, so scaffolded forms get it for free.
+  Do not build a separate password field.
 
 ### AppCrud
 
