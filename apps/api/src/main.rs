@@ -2,6 +2,7 @@ use sqlx::postgres::PgPoolOptions;
 
 use api::build_app;
 use api::config::AppConfig;
+use auth::AuthSettings;
 
 const MAX_DB_CONNECTIONS: u32 = 10;
 
@@ -21,8 +22,18 @@ async fn main() {
         .await
         .expect("failed to connect sea-orm");
 
-    // core build app startup here
-    let (app, _) = build_app(db.clone(), pool.clone());
+    let auth = auth::build_auth(
+        AuthSettings {
+            secret: config.auth_secret.clone(),
+            base_url: config.base_url(),
+            trusted_origins: vec![config.web_origin.clone()],
+        },
+        db.clone(),
+    )
+    .await
+    .expect("failed to build auth");
+
+    let (app, _) = build_app(db.clone(), pool.clone(), auth, &config.web_origin);
 
     let address = config.bind_address();
     let listener = tokio::net::TcpListener::bind(&address)

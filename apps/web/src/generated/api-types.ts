@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/examples": {
+    "/api/examples": {
         parameters: {
             query?: never;
             header?: never;
@@ -20,7 +20,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/examples/bulk": {
+    "/api/examples/bulk": {
         parameters: {
             query?: never;
             header?: never;
@@ -36,7 +36,7 @@ export interface paths {
         patch: operations["bulk_update_examples"];
         trace?: never;
     };
-    "/examples/bulk-delete": {
+    "/api/examples/bulk-delete": {
         parameters: {
             query?: never;
             header?: never;
@@ -52,7 +52,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/examples/{id}": {
+    "/api/examples/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -68,7 +68,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/examples/{id}/publish": {
+    "/api/examples/{id}/publish": {
         parameters: {
             query?: never;
             header?: never;

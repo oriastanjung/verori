@@ -6,6 +6,7 @@ members = [
     "apps/worker",
     "packages/db",
     "packages/db/migration",
+    "packages/auth",
     "packages/queue",
     "packages/logging"
 ]
@@ -28,7 +29,9 @@ utoipa = { version = "5", features = ["axum_extras", "chrono"] }
 utoipa-axum = "0.2"
 utoipa-scalar = { version = "0.3", features = ["axum"] }
 tokio-util = "0.7"
+tower-http = "0.6"
 futures = "0.3"
+better-auth = { version = "1.0.0-alpha.2", features = ["axum", "seaorm2"] }
 
 [profile.release]
 opt-level = "z"

@@ -13,6 +13,12 @@ pub enum AppError {
     #[error("invalid request: {0}")]
     BadRequest(String),
 
+    #[error("authentication required")]
+    Unauthorized,
+
+    #[error("you do not have access to this resource")]
+    Forbidden,
+
     #[error("database error: {0}")]
     Database(#[from] sea_orm::DbErr),
 
@@ -26,6 +32,8 @@ impl AppError {
         match self {
             AppError::NotFound { .. } => StatusCode::NOT_FOUND,
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::Unauthorized => StatusCode::UNAUTHORIZED,
+            AppError::Forbidden => StatusCode::FORBIDDEN,
             AppError::Database(_) | AppError::Queue(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

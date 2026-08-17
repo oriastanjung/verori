@@ -38,6 +38,10 @@ watch-worker:
 watch-codegen:
     cargo watch -w apps/api/src/modules -w apps/api/src/shared -s 'just codegen'
 
+# Create the dev admin and user accounts.
+seed:
+    cargo run -q -p api --bin seed
+
 # Scaffold a module. Interactive: `just new-module`. Direct: `just new-module api invoice`.
 new-module *args:
     bun scripts/new-module.ts {{args}}
