@@ -29,12 +29,14 @@ const AUTH_PREFIX: &str = "/api/auth";
 
 /// Collects every module router, with its access rules, into one router.
 fn api_router(state: AppState) -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().nest(API_PREFIX, example_routes(state))
+    OpenApiRouter::new()
+        .nest(API_PREFIX, example_routes(state.clone()))
 }
 
 /// The same routes without guards, used only to build the OpenAPI document.
 fn api_router_for_docs() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().nest(API_PREFIX, example_routes_for_docs())
+    OpenApiRouter::new()
+        .nest(API_PREFIX, example_routes_for_docs())
 }
 
 /// The browser only ever talks to the web app, but CORS stays configured so the

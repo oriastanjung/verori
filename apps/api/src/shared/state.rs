@@ -18,7 +18,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(db: DatabaseConnection, pool: PgPool, auth: Arc<Auth>) -> AppState {
         let example_repository = create_example_repository(db.clone());
-        let example_service = create_example_service(example_repository, pool.clone());
+        let example_service = create_example_service(example_repository, pool.clone(), db.clone());
 
         AppState {
             auth,

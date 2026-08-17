@@ -11,7 +11,7 @@ use crate::shared::consumer::Consumer;
 /// Builds every consumer once at boot.
 pub fn build_consumers(db: DatabaseConnection) -> Vec<Arc<dyn Consumer>> {
     let example_repository = create_example_repository(db.clone());
-    let example_service = create_example_service(example_repository);
+    let example_service = create_example_service(example_repository, db.clone());
 
     vec![
         create_example_created_consumer(example_service.clone()),

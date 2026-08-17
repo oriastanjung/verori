@@ -148,6 +148,41 @@ impl Consumer for OrderShippedConsumer {
 
 `Runner` handles fetching, retries bookkeeping, marking done/failed, and logging. Consumers only implement the two trait methods.
 
+## Transactions
+
+A service method that writes should run as one unit of work:
+
+```rust
+#[transactional]        // must stay ABOVE #[async_trait]
+#[async_trait]
+impl OrderService for DefaultOrderService {
+    #[tx]
+    async fn place(&self, input: PlaceOrderRequest) -> AppResult<OrderResponse> {
+        let order = self.repository.create(input).await?;   // same transaction
+        self.repository.reserve_stock(order.id).await?;     // same transaction
+        Ok(order.into())
+    }
+}
+```
+
+- Commits on `Ok`, rolls back on `Err`, retries a serialisation failure or deadlock.
+- Nested calls join the outer transaction instead of opening a second one.
+- The service struct needs a `db: DatabaseConnection` field, or name another with `#[transactional(db = "pool")]`.
+- Arguments of `#[tx]` methods must be `Clone`, because a retry rebuilds the body. Use `#[transactional(retries = 1)]` when they are not.
+- **Repositories must query through `tx::conn(&self.db)`**, never `&self.db` directly. That is what makes a call join the ambient transaction.
+- The error type needs `impl db::tx::DatabaseErrorSource` so only transient conflicts are retried. `AppError` and `WorkerError` already have it.
+
+## Authentication and roles
+
+Better Auth owns everything under `/api/auth`; module routes live under `/api`.
+
+- Guards are `require_auth` and `require_admin` in `apps/api/src/shared/auth.rs`, attached with `route_layer` in each module's `route.rs`.
+- Each module splits `member_routes()` from `admin_routes()`. Move a route between them to change who may call it.
+- `route.rs` also exposes `*_routes_for_docs()` — the same routes without guards, because middleware does not change the OpenAPI document.
+- Roles and their permissions live in `packages/auth/src/roles.rs`. That is the only place to change who may do what.
+- Handlers that need the signed-in user take `CurrentSession<AppAuthSchema>`.
+- `just seed` creates `admin@verori.com` / `Admin123!` and `user@verori.com` / `User123!`. Development only.
+
 ## Queue rules (`packages/queue`)
 
 - **Channel names are never strings at the call site.** Add a variant to `QueueChannel` and use it. The scaffolder does this for you.

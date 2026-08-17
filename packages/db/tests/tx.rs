@@ -1,0 +1,118 @@
+//! Proves the ambient transaction commits, rolls back, and nests. Needs a real
+//! Postgres, so it skips when DATABASE_URL is not set.
+
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbErr, Statement};
+
+use db::tx;
+
+const MARKER: &str = "tx-test";
+
+async fn connect() -> Option<DatabaseConnection> {
+    let url = std::env::var("DATABASE_URL").ok()?;
+    Some(db::connect(&url).await.expect("failed to connect"))
+}
+
+/// Writes through `tx::conn`, so it lands in the ambient transaction when one
+/// is open and goes straight to the pool otherwise.
+async fn insert_example(database: &DatabaseConnection, title: &str) -> Result<(), DbErr> {
+    tx::conn(database)
+        .execute_unprepared(&format!(
+            "INSERT INTO examples (title, content, published) VALUES ('{title}', '{MARKER}', false)"
+        ))
+        .await?;
+    Ok(())
+}
+
+async fn count(database: &DatabaseConnection, title: &str) -> i64 {
+    let row = database
+        .query_one_raw(Statement::from_string(
+            database.get_database_backend(),
+            format!("SELECT count(*) AS total FROM examples WHERE title = '{title}'"),
+        ))
+        .await
+        .expect("count query failed")
+        .expect("count returns a row");
+
+    row.try_get::<i64>("", "total").expect("total is a bigint")
+}
+
+async fn cleanup(database: &DatabaseConnection) {
+    database
+        .execute_unprepared(&format!("DELETE FROM examples WHERE content = '{MARKER}'"))
+        .await
+        .expect("cleanup failed");
+}
+
+#[tokio::test]
+async fn commits_when_the_body_succeeds() {
+    let Some(database) = connect().await else {
+        return;
+    };
+    cleanup(&database).await;
+
+    let result: Result<(), DbErr> = tx::run(&database, 1, || async {
+        insert_example(&database, "tx-commit").await?;
+        Ok(())
+    })
+    .await;
+
+    assert!(result.is_ok());
+    assert_eq!(count(&database, "tx-commit").await, 1);
+
+    cleanup(&database).await;
+}
+
+#[tokio::test]
+async fn rolls_back_when_the_body_fails() {
+    let Some(database) = connect().await else {
+        return;
+    };
+    cleanup(&database).await;
+
+    let result: Result<(), DbErr> = tx::run(&database, 1, || async {
+        insert_example(&database, "tx-rollback").await?;
+        Err(DbErr::Custom("business rule failed".to_string()))
+    })
+    .await;
+
+    assert!(result.is_err());
+    assert_eq!(
+        count(&database, "tx-rollback").await,
+        0,
+        "the insert must be rolled back with the rest of the method"
+    );
+
+    cleanup(&database).await;
+}
+
+#[tokio::test]
+async fn a_nested_call_joins_the_outer_transaction() {
+    let Some(database) = connect().await else {
+        return;
+    };
+    cleanup(&database).await;
+
+    let result: Result<(), DbErr> = tx::run(&database, 1, || async {
+        insert_example(&database, "tx-outer").await?;
+
+        // A service calling another service must not open a second transaction.
+        tx::run(&database, 1, || async {
+            insert_example(&database, "tx-inner").await?;
+            Ok::<(), DbErr>(())
+        })
+        .await?;
+
+        Err(DbErr::Custom("outer failed after inner succeeded".to_string()))
+    })
+    .await;
+
+    assert!(result.is_err());
+    assert_eq!(count(&database, "tx-outer").await, 0);
+    assert_eq!(
+        count(&database, "tx-inner").await,
+        0,
+        "the inner write must roll back with the outer transaction"
+    );
+
+    cleanup(&database).await;
+}

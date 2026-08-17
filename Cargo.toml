@@ -8,6 +8,7 @@ members = [
     "packages/db/migration",
     "packages/auth",
     "packages/queue",
+    "packages/transactional",
     "packages/logging"
 ]
 

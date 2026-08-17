@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde_json::json;
+use sea_orm::DatabaseConnection;
 use sqlx::PgPool;
+use transactional::transactional;
 
 use queue::{PublishOptions, QueueChannel};
 
@@ -31,6 +33,7 @@ pub trait ExampleService: Send + Sync {
 pub struct DefaultExampleService {
     repository: Arc<dyn ExampleRepository>,
     pool: PgPool,
+    db: DatabaseConnection,
 }
 
 impl DefaultExampleService {
@@ -42,6 +45,7 @@ impl DefaultExampleService {
     }
 }
 
+#[transactional]
 #[async_trait]
 impl ExampleService for DefaultExampleService {
     async fn list(&self, published: Option<bool>) -> AppResult<Vec<ExampleResponse>> {
@@ -62,6 +66,7 @@ impl ExampleService for DefaultExampleService {
         Ok(ExampleResponse::from(record))
     }
 
+    #[tx]
     async fn create(&self, input: CreateExampleRequest) -> AppResult<ExampleResponse> {
         if input.title.trim().is_empty() {
             return Err(AppError::BadRequest("title must not be empty".to_string()));
@@ -81,6 +86,7 @@ impl ExampleService for DefaultExampleService {
         Ok(ExampleResponse::from(record))
     }
 
+    #[tx]
     async fn update(&self, id: i32, input: UpdateExampleRequest) -> AppResult<ExampleResponse> {
         let record = self
             .repository
@@ -107,6 +113,7 @@ impl ExampleService for DefaultExampleService {
         Ok(())
     }
 
+    #[tx]
     async fn bulk_update(&self, input: BulkUpdateExampleRequest) -> AppResult<u64> {
         Self::ensure_not_empty(&input.ids)?;
         let affected = self
@@ -116,6 +123,7 @@ impl ExampleService for DefaultExampleService {
         Ok(affected)
     }
 
+    #[tx]
     async fn bulk_delete(&self, input: BulkDeleteExampleRequest) -> AppResult<u64> {
         Self::ensure_not_empty(&input.ids)?;
         let affected = self.repository.bulk_delete(&input.ids).await?;
@@ -147,6 +155,11 @@ impl ExampleService for DefaultExampleService {
 pub fn create_example_service(
     repository: Arc<dyn ExampleRepository>,
     pool: PgPool,
+    db: DatabaseConnection,
 ) -> Arc<dyn ExampleService> {
-    Arc::new(DefaultExampleService { repository, pool })
+    Arc::new(DefaultExampleService {
+        repository,
+        pool,
+        db,
+    })
 }

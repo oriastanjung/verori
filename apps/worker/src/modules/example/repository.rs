@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 
 use db::entities::example;
+use db::tx;
 
 #[async_trait]
 pub trait ExampleRepository: Send + Sync {
@@ -18,11 +19,11 @@ pub struct SeaOrmExampleRepository {
 #[async_trait]
 impl ExampleRepository for SeaOrmExampleRepository {
     async fn find_by_id(&self, id: i32) -> Result<Option<example::Model>, DbErr> {
-        example::Entity::find_by_id(id).one(&self.db).await
+        example::Entity::find_by_id(id).one(&tx::conn(&self.db)).await
     }
 
     async fn mark_published(&self, id: i32) -> Result<Option<example::Model>, DbErr> {
-        let Some(found) = example::Entity::find_by_id(id).one(&self.db).await? else {
+        let Some(found) = example::Entity::find_by_id(id).one(&tx::conn(&self.db)).await? else {
             return Ok(None);
         };
 
@@ -30,7 +31,7 @@ impl ExampleRepository for SeaOrmExampleRepository {
         record.published = Set(true);
         record.updated_at = Set(chrono::Utc::now().into());
 
-        let updated = record.update(&self.db).await?;
+        let updated = record.update(&tx::conn(&self.db)).await?;
         Ok(Some(updated))
     }
 }

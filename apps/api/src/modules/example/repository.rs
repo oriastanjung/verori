@@ -8,6 +8,7 @@ use sea_orm::{
 };
 
 use db::entities::example;
+use db::tx;
 
 use crate::modules::example::dto::{CreateExampleRequest, UpdateExampleRequest};
 
@@ -40,11 +41,11 @@ impl ExampleRepository for SeaOrmExampleRepository {
             query = query.filter(example::Column::Published.eq(published));
         }
 
-        query.all(&self.db).await
+        query.all(&tx::conn(&self.db)).await
     }
 
     async fn find_by_id(&self, id: i32) -> Result<Option<example::Model>, DbErr> {
-        example::Entity::find_by_id(id).one(&self.db).await
+        example::Entity::find_by_id(id).one(&tx::conn(&self.db)).await
     }
 
     async fn create(&self, input: CreateExampleRequest) -> Result<example::Model, DbErr> {
@@ -55,7 +56,7 @@ impl ExampleRepository for SeaOrmExampleRepository {
             ..Default::default()
         };
 
-        record.insert(&self.db).await
+        record.insert(&tx::conn(&self.db)).await
     }
 
     async fn update(
@@ -63,7 +64,7 @@ impl ExampleRepository for SeaOrmExampleRepository {
         id: i32,
         input: UpdateExampleRequest,
     ) -> Result<Option<example::Model>, DbErr> {
-        let Some(found) = example::Entity::find_by_id(id).one(&self.db).await? else {
+        let Some(found) = example::Entity::find_by_id(id).one(&tx::conn(&self.db)).await? else {
             return Ok(None);
         };
 
@@ -80,12 +81,12 @@ impl ExampleRepository for SeaOrmExampleRepository {
         }
         record.updated_at = Set(chrono::Utc::now().into());
 
-        let updated = record.update(&self.db).await?;
+        let updated = record.update(&tx::conn(&self.db)).await?;
         Ok(Some(updated))
     }
 
     async fn delete(&self, id: i32) -> Result<u64, DbErr> {
-        let result = example::Entity::delete_by_id(id).exec(&self.db).await?;
+        let result = example::Entity::delete_by_id(id).exec(&tx::conn(&self.db)).await?;
         Ok(result.rows_affected)
     }
 
@@ -97,7 +98,7 @@ impl ExampleRepository for SeaOrmExampleRepository {
                 Expr::value(chrono::Utc::now().fixed_offset()),
             )
             .filter(example::Column::Id.is_in(ids.to_vec()))
-            .exec(&self.db)
+            .exec(&tx::conn(&self.db))
             .await?;
 
         Ok(result.rows_affected)
@@ -106,7 +107,7 @@ impl ExampleRepository for SeaOrmExampleRepository {
     async fn bulk_delete(&self, ids: &[i32]) -> Result<u64, DbErr> {
         let result = example::Entity::delete_many()
             .filter(example::Column::Id.is_in(ids.to_vec()))
-            .exec(&self.db)
+            .exec(&tx::conn(&self.db))
             .await?;
 
         Ok(result.rows_affected)

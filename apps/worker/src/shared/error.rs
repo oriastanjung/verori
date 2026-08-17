@@ -12,4 +12,14 @@ pub enum WorkerError {
     Queue(#[from] queue::QueueError),
 }
 
+/// Lets the transaction helper retry only transient database conflicts.
+impl db::tx::DatabaseErrorSource for WorkerError {
+    fn database_error(&self) -> Option<&sea_orm::DbErr> {
+        match self {
+            WorkerError::Database(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
 pub type WorkerResult<T> = Result<T, WorkerError>;

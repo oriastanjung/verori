@@ -60,4 +60,15 @@ impl IntoResponse for AppError {
     }
 }
 
+/// Lets the transaction helper tell a transient conflict apart from a real
+/// failure, so only the first kind is retried.
+impl db::tx::DatabaseErrorSource for AppError {
+    fn database_error(&self) -> Option<&sea_orm::DbErr> {
+        match self {
+            AppError::Database(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;

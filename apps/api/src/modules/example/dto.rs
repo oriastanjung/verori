@@ -27,26 +27,26 @@ impl From<example::Model> for ExampleResponse {
     }
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct CreateExampleRequest {
     pub title: String,
     pub content: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct UpdateExampleRequest {
     pub title: Option<String>,
     pub content: Option<String>,
     pub published: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct BulkUpdateExampleRequest {
     pub ids: Vec<i32>,
     pub published: bool,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct BulkDeleteExampleRequest {
     pub ids: Vec<i32>,
 }

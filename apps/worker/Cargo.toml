@@ -26,5 +26,6 @@ chrono.workspace = true
 futures.workspace = true
 tokio-util.workspace = true
 db = { path = "../../packages/db" }
+transactional = { path = "../../packages/transactional" }
 queue = { path = "../../packages/queue" }
 logging = { path = "../../packages/logging" }

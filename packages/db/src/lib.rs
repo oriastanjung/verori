@@ -1,4 +1,5 @@
 pub mod entities;
+pub mod tx;
 
 use std::time::Duration;
 

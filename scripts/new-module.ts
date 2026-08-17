@@ -69,31 +69,6 @@ function insertAfter(path: string, anchor: string, line: string): void {
   console.log(`  updated ${show(path)}`);
 }
 
-/** Insert `line` after every line that starts with `anchor`. */
-function insertAfterEvery(path: string, anchor: string, line: string): void {
-  const text = readFileSync(path, "utf8");
-  if (alreadyPresent(text, line)) return;
-
-  const lines = text.split("\n");
-  const result: string[] = [];
-  let found = false;
-
-  for (const current of lines) {
-    result.push(current);
-    if (current.startsWith(anchor)) {
-      result.push(line);
-      found = true;
-    }
-  }
-
-  if (!found) {
-    throw new ScaffoldError(`anchor "${anchor}" not found in ${show(path)}`);
-  }
-
-  writeFileSync(path, result.join("\n"));
-  console.log(`  updated ${show(path)}`);
-}
-
 function appendModule(path: string, name: string): void {
   const declaration = `pub mod ${name};`;
   const text = readFileSync(path, "utf8");
@@ -136,6 +111,8 @@ pub struct Create${pascal}Request {
 use async_trait::async_trait;
 use sea_orm::{DatabaseConnection, DbErr};
 
+use db::tx;
+
 use crate::modules::${name}::dto::${pascal}Response;
 
 #[async_trait]
@@ -144,13 +121,14 @@ pub trait ${pascal}Repository: Send + Sync {
 }
 
 pub struct SeaOrm${pascal}Repository {
-    #[allow(dead_code)]
     db: DatabaseConnection,
 }
 
 #[async_trait]
 impl ${pascal}Repository for SeaOrm${pascal}Repository {
     async fn find_all(&self) -> Result<Vec<${pascal}Response>, DbErr> {
+        // Query through tx::conn so the call joins the service transaction.
+        let _connection = tx::conn(&self.db);
         Ok(Vec::new())
     }
 }
@@ -166,6 +144,8 @@ pub fn create_${name}_repository(db: DatabaseConnection) -> Arc<dyn ${pascal}Rep
     `use std::sync::Arc;
 
 use async_trait::async_trait;
+use sea_orm::DatabaseConnection;
+use transactional::transactional;
 
 use crate::modules::${name}::dto::${pascal}Response;
 use crate::modules::${name}::repository::${pascal}Repository;
@@ -178,18 +158,26 @@ pub trait ${pascal}Service: Send + Sync {
 
 pub struct Default${pascal}Service {
     repository: Arc<dyn ${pascal}Repository>,
+    db: DatabaseConnection,
 }
 
+/// Mark a method with #[tx] to run it, and every repository call it makes, in
+/// one transaction. #[transactional] must stay above #[async_trait].
+#[transactional]
 #[async_trait]
 impl ${pascal}Service for Default${pascal}Service {
+    #[tx]
     async fn list(&self) -> AppResult<Vec<${pascal}Response>> {
         let records = self.repository.find_all().await?;
         Ok(records)
     }
 }
 
-pub fn create_${name}_service(repository: Arc<dyn ${pascal}Repository>) -> Arc<dyn ${pascal}Service> {
-    Arc::new(Default${pascal}Service { repository })
+pub fn create_${name}_service(
+    repository: Arc<dyn ${pascal}Repository>,
+    db: DatabaseConnection,
+) -> Arc<dyn ${pascal}Service> {
+    Arc::new(Default${pascal}Service { repository, db })
 }
 `,
   );
@@ -223,14 +211,36 @@ pub async fn list_${name}(
 
   write(
     join(base, "route.rs"),
-    `use utoipa_axum::router::OpenApiRouter;
+    `use axum::middleware::from_fn_with_state;
+use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use crate::modules::${name}::controller;
+use crate::shared::auth::{require_admin, require_auth};
 use crate::shared::state::AppState;
 
-pub fn ${name}_routes() -> OpenApiRouter<AppState> {
+/// Anyone signed in may use these.
+fn member_routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new().routes(routes!(controller::list_${name}))
+}
+
+/// Admin only. Move a route here when it should be restricted.
+fn admin_routes() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+}
+
+/// Routes with their access rules attached. This is what the server mounts.
+pub fn ${name}_routes(state: AppState) -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .merge(member_routes().route_layer(from_fn_with_state(state.clone(), require_auth)))
+        .merge(admin_routes().route_layer(from_fn_with_state(state, require_admin)))
+}
+
+/// The same routes without guards, used only for the OpenAPI document.
+pub fn ${name}_routes_for_docs() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .merge(member_routes())
+        .merge(admin_routes())
 }
 `,
   );
@@ -244,7 +254,7 @@ pub mod route;
 pub mod service;
 
 pub use repository::create_${name}_repository;
-pub use route::${name}_routes;
+pub use route::{${name}_routes, ${name}_routes_for_docs};
 pub use service::{create_${name}_service, ${pascal}Service};
 `,
   );
@@ -265,20 +275,25 @@ pub use service::{create_${name}_service, ${pascal}Service};
   insertAfter(
     statePath,
     "        let example_service = create_example_service(",
-    `        let ${name}_repository = create_${name}_repository(db.clone());\n        let ${name}_service = create_${name}_service(${name}_repository);`,
+    `        let ${name}_repository = create_${name}_repository(db.clone());\n        let ${name}_service = create_${name}_service(${name}_repository, db.clone());`,
   );
   insertAfter(statePath, "        AppState {", `            ${name}_service,`);
 
   const libPath = join(ROOT, "apps/api/src/lib.rs");
   insertAfter(
     libPath,
-    "use crate::modules::example::example_routes;",
-    `use crate::modules::${name}::${name}_routes;`,
+    "use crate::modules::example::{example_routes, example_routes_for_docs};",
+    `use crate::modules::${name}::{${name}_routes, ${name}_routes_for_docs};`,
   );
-  insertAfterEvery(
+  insertAfter(
     libPath,
-    "        .merge(example_routes())",
-    `        .merge(${name}_routes())`,
+    "        .nest(API_PREFIX, example_routes(state.clone()))",
+    `        .nest(API_PREFIX, ${name}_routes(state.clone()))`,
+  );
+  insertAfter(
+    libPath,
+    "        .nest(API_PREFIX, example_routes_for_docs())",
+    `        .nest(API_PREFIX, ${name}_routes_for_docs())`,
   );
 }
 
@@ -318,19 +333,22 @@ pub struct ${pascal}Payload {
 use async_trait::async_trait;
 use sea_orm::{DatabaseConnection, DbErr};
 
+use db::tx;
+
 #[async_trait]
 pub trait ${pascal}Repository: Send + Sync {
     async fn exists(&self, id: i32) -> Result<bool, DbErr>;
 }
 
 pub struct SeaOrm${pascal}Repository {
-    #[allow(dead_code)]
     db: DatabaseConnection,
 }
 
 #[async_trait]
 impl ${pascal}Repository for SeaOrm${pascal}Repository {
     async fn exists(&self, _id: i32) -> Result<bool, DbErr> {
+        // Query through tx::conn so the call joins the service transaction.
+        let _connection = tx::conn(&self.db);
         Ok(true)
     }
 }
@@ -346,6 +364,8 @@ pub fn create_${name}_repository(db: DatabaseConnection) -> Arc<dyn ${pascal}Rep
     `use std::sync::Arc;
 
 use async_trait::async_trait;
+use sea_orm::DatabaseConnection;
+use transactional::transactional;
 
 use crate::modules::${name}::repository::${pascal}Repository;
 use crate::shared::error::{WorkerError, WorkerResult};
@@ -357,10 +377,15 @@ pub trait ${pascal}Service: Send + Sync {
 
 pub struct Default${pascal}Service {
     repository: Arc<dyn ${pascal}Repository>,
+    db: DatabaseConnection,
 }
 
+/// Mark a method with #[tx] to run it, and every repository call it makes, in
+/// one transaction. #[transactional] must stay above #[async_trait].
+#[transactional]
 #[async_trait]
 impl ${pascal}Service for Default${pascal}Service {
+    #[tx]
     async fn handle(&self, id: i32) -> WorkerResult<()> {
         if !self.repository.exists(id).await? {
             return Err(WorkerError::InvalidPayload(format!("${name} {id} does not exist")));
@@ -371,8 +396,11 @@ impl ${pascal}Service for Default${pascal}Service {
     }
 }
 
-pub fn create_${name}_service(repository: Arc<dyn ${pascal}Repository>) -> Arc<dyn ${pascal}Service> {
-    Arc::new(Default${pascal}Service { repository })
+pub fn create_${name}_service(
+    repository: Arc<dyn ${pascal}Repository>,
+    db: DatabaseConnection,
+) -> Arc<dyn ${pascal}Service> {
+    Arc::new(Default${pascal}Service { repository, db })
 }
 `,
   );
@@ -439,7 +467,7 @@ pub use service::create_${name}_service;
   insertAfter(
     statePath,
     "    let example_service = create_example_service(",
-    `    let ${name}_repository = create_${name}_repository(db.clone());\n    let ${name}_service = create_${name}_service(${name}_repository);`,
+    `    let ${name}_repository = create_${name}_repository(db.clone());\n    let ${name}_service = create_${name}_service(${name}_repository, db.clone());`,
   );
   insertAfter(statePath, "    vec![", `        create_${name}_consumer(${name}_service),`);
 }
