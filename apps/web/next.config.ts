@@ -4,11 +4,10 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   output: "standalone",
-  // Keeps the development indicator away from the header controls and the
-  // account menu in the sidebar footer.
-  devIndicators: {
-    position: "bottom-right",
-  },
+  // The development overlay renders a full-screen portal that swallows clicks
+  // in the top right corner, which is where the theme toggle lives. Compile and
+  // runtime errors still surface without the indicator.
+  devIndicators: false,
 };
 
 export default nextConfig;

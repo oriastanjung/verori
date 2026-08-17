@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { WarningIcon } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,10 +29,10 @@ export function AuthForm({ action, submitLabel, pendingLabel, children }: Props)
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-5">
       {children}
 
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button type="submit" size="lg" className="h-11 w-full" disabled={pending}>
         {pending ? pendingLabel : submitLabel}
       </Button>
 
@@ -40,10 +41,11 @@ export function AuthForm({ action, submitLabel, pendingLabel, children }: Props)
           role={state.ok ? "status" : "alert"}
           className={
             state.ok
-              ? "text-sm text-green-600 dark:text-green-500"
-              : "text-sm text-destructive"
+              ? "text-sm text-muted-foreground"
+              : "flex items-start gap-2 border-l-0 text-sm text-destructive"
           }
         >
+          {!state.ok && <WarningIcon className="mt-0.5 size-4 shrink-0" />}
           {state.message}
         </p>
       )}

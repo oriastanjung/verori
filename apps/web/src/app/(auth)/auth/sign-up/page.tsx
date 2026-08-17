@@ -2,21 +2,20 @@ import Link from "next/link";
 
 import { signUpAction } from "@/features/auth/actions/auth.actions";
 import { AuthForm } from "@/features/auth/components/auth-form";
+import { AuthHeader } from "@/features/auth/components/auth-header";
 import { Field } from "@/features/auth/components/field";
 
 export const dynamic = "force-dynamic";
 
 export default function Page() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Create an account</h1>
-        <p className="text-sm text-muted-foreground">
-          New accounts start with the user role.
-        </p>
-      </div>
+    <div className="flex flex-col gap-8">
+      <AuthHeader
+        title="Create an account"
+        description="New accounts start with the user role. An admin can change it later."
+      />
 
-      <AuthForm action={signUpAction} submitLabel="Sign up" pendingLabel="Creating...">
+      <AuthForm action={signUpAction} submitLabel="Create account" pendingLabel="Creating...">
         <Field name="name" label="Name" autoComplete="name" />
         <Field name="email" label="Email" type="email" autoComplete="email" />
         <Field
@@ -28,9 +27,9 @@ export default function Page() {
         />
       </AuthForm>
 
-      <p className="text-sm text-muted-foreground">
-        Already have an account?{" "}
-        <Link href="/auth/sign-in" className="underline underline-offset-4">
+      <p className="border-t border-rule pt-6 text-sm text-muted-foreground">
+        Already have one?{" "}
+        <Link href="/auth/sign-in" className="text-ink underline underline-offset-4">
           Sign in
         </Link>
       </p>

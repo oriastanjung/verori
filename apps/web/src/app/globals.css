@@ -5,6 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-display: var(--font-display);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-signal: var(--signal);
+  --color-rule: var(--rule);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -49,18 +55,25 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Marketing surface. Warm paper, warm ink, one signal colour. */
+  --ink: oklch(0.19 0.014 48);
+  --paper: oklch(0.977 0.006 85);
+  --paper-2: oklch(0.944 0.009 85);
+  --signal: oklch(0.552 0.207 27);
+  --rule: oklch(0.19 0.014 48 / 0.14);
+
+  --background: oklch(0.988 0.004 85);
+  --foreground: oklch(0.19 0.014 48);
+  --card: oklch(0.995 0.003 85);
+  --card-foreground: oklch(0.19 0.014 48);
+  --popover: oklch(0.995 0.003 85);
+  --popover-foreground: oklch(0.19 0.014 48);
+  --primary: oklch(0.22 0.014 48);
+  --primary-foreground: oklch(0.98 0.005 85);
+  --secondary: oklch(0.955 0.007 85);
+  --secondary-foreground: oklch(0.22 0.014 48);
+  --muted: oklch(0.955 0.007 85);
+  --muted-foreground: oklch(0.505 0.012 60);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -84,18 +97,25 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  /* Same warmth, inverted. The signal lifts so it still carries on dark paper. */
+  --ink: oklch(0.955 0.006 85);
+  --paper: oklch(0.165 0.013 48);
+  --paper-2: oklch(0.215 0.014 48);
+  --signal: oklch(0.672 0.184 30);
+  --rule: oklch(0.955 0.006 85 / 0.16);
+
+  --background: oklch(0.155 0.013 48);
+  --foreground: oklch(0.965 0.005 85);
+  --card: oklch(0.205 0.013 48);
+  --card-foreground: oklch(0.965 0.005 85);
+  --popover: oklch(0.205 0.013 48);
+  --popover-foreground: oklch(0.965 0.005 85);
+  --primary: oklch(0.93 0.006 85);
+  --primary-foreground: oklch(0.205 0.013 48);
+  --secondary: oklch(0.268 0.012 48);
+  --secondary-foreground: oklch(0.965 0.005 85);
+  --muted: oklch(0.268 0.012 48);
+  --muted-foreground: oklch(0.715 0.011 60);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);

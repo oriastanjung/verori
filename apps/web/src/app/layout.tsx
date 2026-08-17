@@ -1,11 +1,24 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Archivo, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/layout/theme-provider";
 
 const geistSans = Geist({
   subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+/** Display face. Wide grotesk, used only for headlines and numerals. */
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700"],
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
 });
 
 
@@ -19,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       suppressHydrationWarning
       lang="en"
-      className={`${geistSans.className} h-full antialiased`}
+      className={`${geistSans.variable} ${archivo.variable} ${geistMono.variable} h-full font-sans antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider>{children}</ThemeProvider>

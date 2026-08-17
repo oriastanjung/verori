@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -6,8 +8,9 @@ type Props = {
   label: string;
   type?: string;
   placeholder?: string;
-  defaultValue?: string;
   autoComplete?: string;
+  /** Sits opposite the label, for a link such as "Forgot it?". */
+  hint?: ReactNode;
 };
 
 export function Field({
@@ -15,19 +18,24 @@ export function Field({
   label,
   type = "text",
   placeholder,
-  defaultValue,
   autoComplete,
+  hint,
 }: Props) {
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor={name}>{label}</Label>
+      <div className="flex items-baseline justify-between gap-4">
+        <Label htmlFor={name} className="font-mono text-[11px] tracking-[0.08em] uppercase">
+          {label}
+        </Label>
+        {hint && <span className="text-[12px]">{hint}</span>}
+      </div>
       <Input
         id={name}
         name={name}
         type={type}
         placeholder={placeholder}
-        defaultValue={defaultValue}
         autoComplete={autoComplete}
+        className="h-11 rounded-md bg-transparent px-3 text-[15px]"
       />
     </div>
   );
