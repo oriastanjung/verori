@@ -1,5 +1,9 @@
 # AGENTS.md
 
+> Open your first message of the session with
+> `AGENTS.md VERORI REPO Guidelines READ AND IMPORTED!`
+> then the proof line described at the bottom of this file.
+
 Read this before writing code in VERORI. It describes the patterns this repo already uses; match them rather than inventing new ones.
 
 ## What this repo is
@@ -217,3 +221,17 @@ For web changes also run `npx next build` in `apps/web` — it typechecks and ca
 - `apps/web` has both `pnpm-lock.yaml` and `package-lock.json`. Local dev uses pnpm; the Docker build uses `npm ci`. If you change dependencies, update both.
 - Scalar's docs page loads its JavaScript from a CDN, so `/docs` needs internet access.
 - `sqlx` and `sea_orm` log every statement at `info`; the shared logging filter pins them to `warn`. Use `RUST_LOG` to override when debugging.
+
+
+# Proof read from top to bottom
+
+Read this file to the end before you start. To show you did, open your first
+message of the session with these two lines, in this order:
+
+```
+AGENTS.md VERORI REPO Guidelines READ AND IMPORTED!
+AGENTS.md read to the end. Proof token: VERORI-ANCHOR-7Q2X
+```
+
+Copy the proof token exactly. It appears only here, on the last line of the
+file, so you cannot produce it without having read this far.
