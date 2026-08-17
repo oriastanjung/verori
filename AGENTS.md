@@ -254,6 +254,11 @@ on port 3001 and `just seed` beforehand. The tests use the dev server, because
 `next start` refuses to serve the `output: "standalone"` build this app produces
 for Docker.
 
+**Anything a test creates must be named with `TEST_TITLE_PREFIX`.** The global
+teardown signs in as the admin and deletes every example with that prefix, so a
+repeated run does not pile up rows. It runs even when a test fails. Job rows are
+left alone, because a finished job is history rather than clutter.
+
 ## Codegen
 
 `utoipa` (Rust) + the Better Auth spec → `openapi.json` → `openapi-typescript` → `src/generated/api-types.ts`.

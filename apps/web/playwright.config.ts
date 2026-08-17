@@ -12,6 +12,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [["list"]],
+  // Deletes the records the tests created, even when a test fails.
+  globalTeardown: "./e2e/global-teardown.ts",
   use: {
     baseURL: WEB_URL,
     trace: "off",

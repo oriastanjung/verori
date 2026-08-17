@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_TITLE_PREFIX } from "./global-teardown";
+
 const ADMIN = { email: "admin@verori.com", password: "Admin123!" };
 const USER = { email: "user@verori.com", password: "User123!" };
 
@@ -71,7 +73,7 @@ test("signing out closes the app again", async ({ page }) => {
 });
 
 test("a user can create an example and it reaches the api", async ({ page }) => {
-  const title = `e2e-${Date.now()}`;
+  const title = `${TEST_TITLE_PREFIX}${Date.now()}`;
 
   await signIn(page, USER);
   await page.goto("/dashboard/examples");
