@@ -3,6 +3,7 @@ import { Evidence } from "@/features/landing/components/evidence";
 import { Hero } from "@/features/landing/components/hero";
 import { Pipeline } from "@/features/landing/components/pipeline";
 import { Queue } from "@/features/landing/components/queue";
+import { Security } from "@/features/landing/components/security";
 import { SiteFooter } from "@/features/landing/components/site-footer";
 import { SiteNav } from "@/features/landing/components/site-nav";
 import { Stack } from "@/features/landing/components/stack";
@@ -17,6 +18,7 @@ export function LandingView() {
         <Evidence />
         <Pipeline />
         <Queue />
+        <Security />
         <Stack />
         <Closing />
       </main>

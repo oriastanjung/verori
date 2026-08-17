@@ -1,5 +1,6 @@
 use std::env;
 use std::path::Path;
+use std::str::FromStr;
 
 use thiserror::Error;
 
@@ -7,6 +8,10 @@ const DEFAULT_PORT: u16 = 3001;
 const DEFAULT_HOST: &str = "0.0.0.0";
 const DEFAULT_WEB_ORIGIN: &str = "http://localhost:3000";
 const MIN_SECRET_LENGTH: usize = 32;
+const DEFAULT_RATE_LIMIT_PER_SECOND: u64 = 50;
+const DEFAULT_RATE_LIMIT_BURST: u32 = 120;
+const DEFAULT_BODY_LIMIT_KB: usize = 256;
+const DEFAULT_REQUEST_TIMEOUT_SECONDS: u64 = 20;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -16,6 +21,16 @@ pub enum ConfigError {
     Invalid { name: &'static str, value: String },
 }
 
+fn read<T: FromStr>(name: &'static str, fallback: T) -> Result<T, ConfigError> {
+    match env::var(name) {
+        Ok(raw) => raw.parse().map_err(|_| ConfigError::Invalid {
+            name,
+            value: raw,
+        }),
+        Err(_) => Ok(fallback),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub database_url: String,
@@ -23,6 +38,15 @@ pub struct AppConfig {
     pub port: u16,
     pub auth_secret: String,
     pub web_origin: String,
+    /// Sustained requests allowed per address, per second.
+    pub rate_limit_per_second: u64,
+    /// How far a caller may burst above that rate before being refused.
+    pub rate_limit_burst: u32,
+    pub body_limit_bytes: usize,
+    pub request_timeout_seconds: u64,
+    /// Only switch on behind TLS. The header tells browsers never to use
+    /// plain http for this host again.
+    pub enable_hsts: bool,
 }
 
 impl AppConfig {
@@ -61,6 +85,14 @@ impl AppConfig {
             port,
             auth_secret,
             web_origin,
+            rate_limit_per_second: read("RATE_LIMIT_PER_SECOND", DEFAULT_RATE_LIMIT_PER_SECOND)?,
+            rate_limit_burst: read("RATE_LIMIT_BURST", DEFAULT_RATE_LIMIT_BURST)?,
+            body_limit_bytes: read("BODY_LIMIT_KB", DEFAULT_BODY_LIMIT_KB)? * 1024,
+            request_timeout_seconds: read(
+                "REQUEST_TIMEOUT_SECONDS",
+                DEFAULT_REQUEST_TIMEOUT_SECONDS,
+            )?,
+            enable_hsts: read("ENABLE_HSTS", false)?,
         })
     }
 

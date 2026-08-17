@@ -186,6 +186,27 @@ Better Auth owns everything under `/api/auth`; module routes live under `/api`.
 - Handlers that need the signed-in user take `CurrentSession<AppAuthSchema>`.
 - `just seed` creates `admin@verori.com` / `Admin123!` and `user@verori.com` / `User123!`. Development only.
 
+## Security
+
+`apps/api/src/shared/security.rs` holds the transport level hardening: headers,
+timeout, and the rate limit. The layer order in `lib.rs` matters, because in
+axum a layer only wraps routes added **before** it.
+
+- JSON routes get a locked down CSP and `no-store`; the docs page gets its own
+  policy, because Scalar loads its bundle from a CDN.
+- Never return an internal error to the caller. `AppError` logs the real cause
+  and answers 500 with one flat sentence, so a database message cannot describe
+  the schema to someone probing it.
+- Validate size at the edge of a module: string lengths and list lengths. An
+  unbounded field is its own denial of service.
+- `tower_governor`'s `per_second(n)` means "one slot every n seconds", not
+  "n per second". `security::rate_limit` does the conversion once so no call
+  site has to remember.
+- The rate limit keys on the peer address, which only exists when the server is
+  built with `into_make_service_with_connect_info`.
+- **Claims about security go in the README table with their gaps.** Do not write
+  that anything is immune to the OWASP Top 10.
+
 ## Queue rules (`packages/queue`)
 
 - **Channel names are never strings at the call site.** Add a variant to `QueueChannel` and use it. The scaffolder does this for you.

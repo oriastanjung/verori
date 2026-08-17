@@ -44,17 +44,23 @@ pub struct ErrorBody {
     pub message: String,
 }
 
+/// What a caller is told when something broke on our side. The real error goes
+/// to the log, never to the response, because a database message can describe
+/// the schema to someone probing it.
+const INTERNAL_MESSAGE: &str = "something went wrong on our side";
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = self.status_code();
 
-        if status == StatusCode::INTERNAL_SERVER_ERROR {
+        let message = if status == StatusCode::INTERNAL_SERVER_ERROR {
             tracing::error!(error = %self, "request failed");
-        }
-
-        let body = ErrorBody {
-            message: self.to_string(),
+            INTERNAL_MESSAGE.to_string()
+        } else {
+            self.to_string()
         };
+
+        let body = ErrorBody { message };
 
         (status, Json(body)).into_response()
     }

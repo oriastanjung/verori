@@ -16,6 +16,9 @@ use crate::modules::example::dto::{
 use crate::modules::example::repository::ExampleRepository;
 
 const RESOURCE: &str = "example";
+const MAX_TITLE_LENGTH: usize = 200;
+const MAX_CONTENT_LENGTH: usize = 5_000;
+const MAX_BULK_IDS: usize = 500;
 const DEFAULT_PAGE: u64 = 1;
 const DEFAULT_PER_PAGE: u64 = 10;
 const MAX_PER_PAGE: u64 = 100;
@@ -40,10 +43,35 @@ pub struct DefaultExampleService {
 }
 
 impl DefaultExampleService {
-    fn ensure_not_empty(ids: &[i32]) -> AppResult<()> {
+    fn ensure_bulk_size(ids: &[i32]) -> AppResult<()> {
         if ids.is_empty() {
             return Err(AppError::BadRequest("ids must not be empty".to_string()));
         }
+        if ids.len() > MAX_BULK_IDS {
+            return Err(AppError::BadRequest(format!(
+                "no more than {MAX_BULK_IDS} ids per request"
+            )));
+        }
+        Ok(())
+    }
+
+    fn ensure_within_limits(title: Option<&str>, content: Option<&str>) -> AppResult<()> {
+        if let Some(title) = title {
+            if title.chars().count() > MAX_TITLE_LENGTH {
+                return Err(AppError::BadRequest(format!(
+                    "title must be at most {MAX_TITLE_LENGTH} characters"
+                )));
+            }
+        }
+
+        if let Some(content) = content {
+            if content.chars().count() > MAX_CONTENT_LENGTH {
+                return Err(AppError::BadRequest(format!(
+                    "content must be at most {MAX_CONTENT_LENGTH} characters"
+                )));
+            }
+        }
+
         Ok(())
     }
 }
@@ -84,6 +112,7 @@ impl ExampleService for DefaultExampleService {
         if input.title.trim().is_empty() {
             return Err(AppError::BadRequest("title must not be empty".to_string()));
         }
+        Self::ensure_within_limits(Some(&input.title), input.content.as_deref())?;
 
         let record = self.repository.create(input).await?;
 
@@ -101,6 +130,8 @@ impl ExampleService for DefaultExampleService {
 
     #[tx]
     async fn update(&self, id: i32, input: UpdateExampleRequest) -> AppResult<ExampleResponse> {
+        Self::ensure_within_limits(input.title.as_deref(), input.content.as_deref())?;
+
         let record = self
             .repository
             .update(id, input)
@@ -128,7 +159,7 @@ impl ExampleService for DefaultExampleService {
 
     #[tx]
     async fn bulk_update(&self, input: BulkUpdateExampleRequest) -> AppResult<u64> {
-        Self::ensure_not_empty(&input.ids)?;
+        Self::ensure_bulk_size(&input.ids)?;
         let affected = self
             .repository
             .bulk_set_published(&input.ids, input.published)
@@ -138,7 +169,7 @@ impl ExampleService for DefaultExampleService {
 
     #[tx]
     async fn bulk_delete(&self, input: BulkDeleteExampleRequest) -> AppResult<u64> {
-        Self::ensure_not_empty(&input.ids)?;
+        Self::ensure_bulk_size(&input.ids)?;
         let affected = self.repository.bulk_delete(&input.ids).await?;
         Ok(affected)
     }

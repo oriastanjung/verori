@@ -38,7 +38,9 @@ chrono.workspace = true
 auth = { path = "../../packages/auth" }
 transactional = { path = "../../packages/transactional" }
 better-auth.workspace = true
-tower-http = { workspace = true, features = ["cors"] }
+tower-http = { workspace = true, features = ["cors", "set-header", "timeout"] }
+tower_governor.workspace = true
+governor = "0.10"
 db = { path = "../../packages/db" }
 queue = { path = "../../packages/queue" }
 logging = { path = "../../packages/logging" }

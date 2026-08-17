@@ -19,6 +19,39 @@ I built VERORI to solve three problems at once:
 - **One CRUD screen, reused everywhere.** `AppCrud` gives every module search, filters, sortable columns, selection, server side pagination with real totals, and create, edit and delete through dialogs. Deletes always confirm first.
 - **AI native.** See below.
 
+## Security
+
+No project can claim to be immune to the OWASP Top 10. What this table claims
+is narrower and checkable: which risk each category covers, what this repository
+does about it, and where the gap is.
+
+| OWASP 2021 | What is in place |
+| --- | --- |
+| A01 Broken access control | Route guards run before the handler. Roles are declared in one file. A member calling an admin route gets 403, proven by a test. |
+| A02 Cryptographic failures | Passwords and sessions are handled by Better Auth, not by hand. `AUTH_SECRET` must be at least 32 characters or the api refuses to start. The session cookie is httpOnly, so scripts cannot read it. |
+| A03 Injection | Every query goes through SeaORM or sqlx with bind parameters. No user input is ever formatted into SQL. A search of `' OR 1=1--` returns zero rows because it is matched as text. |
+| A04 Insecure design | Writes run inside one transaction and roll back together. The queue is at-least-once with a retry budget and a dead letter queue rather than silent loss. |
+| A05 Security misconfiguration | Security headers on every response: CSP, `nosniff`, `DENY` framing, referrer and permissions policy. Body size limit, request timeout, and a per-address rate limit. HSTS is opt in, since it only makes sense behind TLS. |
+| A06 Vulnerable components | `just audit` checks Rust dependencies against the RustSec database and npm dependencies against the npm advisories. |
+| A07 Authentication failures | Sign-in, sessions, password reset and admin user management come from Better Auth. Its CSRF middleware validates the request origin. |
+| A08 Integrity failures | Both lockfiles are committed. The OpenAPI document and the TypeScript client are generated from the Rust source, so the front end cannot drift from the API. |
+| A09 Logging failures | Every request is logged with method, path, status and latency. Server errors are logged in full and answered with a generic message, so a database error never reaches the caller. |
+| A10 Server side request forgery | The api makes no outbound requests on behalf of a caller. |
+
+### What this does not do
+
+- **Rate limiting is not DDoS protection.** It refuses a flood from one address
+  so the database survives. Absorbing a distributed flood is the job of the
+  network in front of this service.
+- **Every call from the web app arrives from one address**, so the whole front
+  end shares a single rate limit bucket. Size it for your traffic, or key the
+  limiter on something else.
+- **The web app sets the header family but not a Content Security Policy.** A
+  strict policy for a React app needs per request nonces, which is not wired up
+  here. The API, which is what serves data, does have one.
+- **Nothing here has been penetration tested.** The claims above describe what
+  the code does, not a clean bill of health.
+
 ## AI native
 
 Coding agents are good at filling in a pattern and bad at inventing one consistently. VERORI leans into that.

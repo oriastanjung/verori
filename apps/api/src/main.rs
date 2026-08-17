@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use sqlx::postgres::PgPoolOptions;
 
 use api::build_app;
@@ -33,7 +35,7 @@ async fn main() {
     .await
     .expect("failed to build auth");
 
-    let (app, _) = build_app(db.clone(), pool.clone(), auth, &config.web_origin);
+    let (app, _) = build_app(db.clone(), pool.clone(), auth, &config);
 
     let address = config.bind_address();
     let listener = tokio::net::TcpListener::bind(&address)
@@ -44,8 +46,13 @@ async fn main() {
 
     // Stops accepting new connections on a signal and lets in-flight requests
     // finish before the process exits.
-    axum::serve(listener, app)
-        .with_graceful_shutdown(logging::shutdown::signal_received())
+    // The rate limiter keys on the peer address, which only reaches the router
+    // when the service is built with connect info.
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(logging::shutdown::signal_received())
         .await
         .expect("server error");
 

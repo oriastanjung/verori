@@ -39,6 +39,12 @@ watch-worker:
 watch-codegen:
     cargo watch -w apps/api/src/modules -w apps/api/src/shared -s 'just codegen'
 
+# Check dependencies against the RustSec advisory database and npm advisories.
+# Install once with: cargo install cargo-audit
+audit:
+    cargo audit
+    pnpm --dir apps/web audit --audit-level high
+
 # Browser tests, from the web app through to the api. Needs a seeded api on 3001.
 e2e:
     pnpm --dir apps/web exec playwright test

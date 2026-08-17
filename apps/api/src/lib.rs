@@ -4,10 +4,12 @@ pub mod shared;
 
 use std::sync::Arc;
 
+use axum::extract::DefaultBodyLimit;
 use axum::http::{HeaderName, Method};
 use axum::response::Redirect;
 use axum::routing::get;
 use axum::{Json, Router};
+use tower_governor::GovernorLayer;
 use sea_orm::DatabaseConnection;
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -19,8 +21,10 @@ use utoipa_scalar::{Scalar, Servable};
 use auth::{Auth, AxumIntegration};
 
 use crate::modules::example::{example_routes, example_routes_for_docs};
+use crate::config::AppConfig;
 use crate::shared::docs::merged_spec;
 use crate::shared::openapi::ApiDoc;
+use crate::shared::security;
 use crate::shared::state::AppState;
 
 /// Every module route lives under this prefix.
@@ -68,7 +72,7 @@ pub fn build_app(
     db: DatabaseConnection,
     pool: PgPool,
     auth: Arc<Auth>,
-    web_origin: &str,
+    config: &AppConfig,
 ) -> (Router, utoipa::openapi::OpenApi) {
     let state = AppState::new(db, pool, Arc::clone(&auth));
 
@@ -81,6 +85,16 @@ pub fn build_app(
     let openapi_json = merged_spec(&api, auth.as_ref());
     let served_spec = openapi_json.clone();
 
+    // One address may sustain rate_limit_per_second and burst above it before
+    // being refused with 429.
+    let governor = security::rate_limit(config.rate_limit_per_second, config.rate_limit_burst)
+        .expect("rate limit settings must be valid");
+
+    let docs_router = Router::new()
+        .merge(Scalar::with_url("/docs", openapi_json.clone()))
+        .route("/docs/", get(|| async { Redirect::permanent("/docs") }))
+        .layer(security::docs_headers());
+
     let router = router
         .route("/health", get(health))
         .route(
@@ -90,14 +104,26 @@ pub fn build_app(
                 async move { Json(document) }
             }),
         )
-        .merge(Scalar::with_url("/docs", openapi_json.clone()))
-        .route("/docs/", get(|| async { Redirect::permanent("/docs") }))
         // Better Auth owns every route under this prefix: sign-up, sign-in,
         // sessions, password reset, admin user management.
         .nest(AUTH_PREFIX, auth.axum_router_with_state::<AppState>())
-        .layer(cors_layer(web_origin))
+        // Everything above answers with json, so it gets the locked down policy.
+        // The docs page is merged after, keeping its own.
+        .layer(security::api_headers())
+        .merge(docs_router)
+        .layer(cors_layer(&config.web_origin))
+        .layer(security::common_headers())
+        .layer(DefaultBodyLimit::max(config.body_limit_bytes))
+        .layer(security::request_timeout(config.request_timeout_seconds))
+        .layer(GovernorLayer::new(governor))
         .layer(axum::middleware::from_fn(shared::middleware::log_requests))
         .with_state(state);
+
+    let router = if config.enable_hsts {
+        router.layer(security::hsts_header())
+    } else {
+        router
+    };
 
     (router, api)
 }

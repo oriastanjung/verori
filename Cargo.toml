@@ -31,6 +31,7 @@ utoipa-axum = "0.2"
 utoipa-scalar = { version = "0.3", features = ["axum"] }
 tokio-util = "0.7"
 tower-http = "0.6"
+tower_governor = { version = "0.8", features = ["axum"] }
 futures = "0.3"
 better-auth = { version = "1.0.0-alpha.2", default-features = false, features = ["axum", "seaorm2", "rustls"] }
 
