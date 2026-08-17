@@ -17,8 +17,8 @@ export function Hero() {
         the backend.
       </p>
       <div className="flex items-center gap-3">
-        <Link href="/dashboard" className={buttonVariants({ size: "lg" })}>
-          Open the app
+        <Link href="/auth/sign-in" className={buttonVariants({ size: "lg" })}>
+          Sign in
         </Link>
         <a
           href={`${API_BASE_URL}/docs`}

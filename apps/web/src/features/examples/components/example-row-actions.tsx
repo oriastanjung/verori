@@ -14,39 +14,44 @@ import {
 
 type Props = {
   exampleId: number;
+  canDelete: boolean;
 };
 
-export function ExampleRowActions({ exampleId }: Props) {
-  const [publishState, publishAction, publishPending] = useActionState<
-    ActionState,
-    FormData
-  >(publishExampleAction, INITIAL_ACTION_STATE);
-
+export function ExampleRowActions({ exampleId, canDelete }: Props) {
+  const [queueState, queueAction, queuePending] = useActionState<ActionState, FormData>(
+    publishExampleAction,
+    INITIAL_ACTION_STATE,
+  );
   const [deleteState, deleteAction, deletePending] = useActionState<
     ActionState,
     FormData
   >(deleteExampleAction, INITIAL_ACTION_STATE);
 
-  const message = publishState.message || deleteState.message;
+  const message = queueState.message || deleteState.message;
+  const failed = (!queueState.ok && queueState.message) || (!deleteState.ok && deleteState.message);
 
   return (
-    <div className="flex items-center gap-2">
-      <form action={publishAction}>
+    <div className="flex items-center justify-end gap-2">
+      {message && (
+        <span className={failed ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
+          {message}
+        </span>
+      )}
+
+      <form action={queueAction}>
         <input type="hidden" name="id" value={exampleId} />
-        <Button type="submit" variant="secondary" size="sm" disabled={publishPending}>
-          {publishPending ? "Queueing..." : "Publish"}
+        <Button type="submit" variant="secondary" size="sm" disabled={queuePending}>
+          {queuePending ? "Queueing..." : "Send to queue"}
         </Button>
       </form>
 
-      <form action={deleteAction}>
-        <input type="hidden" name="id" value={exampleId} />
-        <Button type="submit" variant="destructive" size="sm" disabled={deletePending}>
-          {deletePending ? "Deleting..." : "Delete"}
-        </Button>
-      </form>
-
-      {message.length > 0 && (
-        <span className="text-xs text-muted-foreground">{message}</span>
+      {canDelete && (
+        <form action={deleteAction}>
+          <input type="hidden" name="id" value={exampleId} />
+          <Button type="submit" variant="destructive" size="sm" disabled={deletePending}>
+            {deletePending ? "Deleting..." : "Delete"}
+          </Button>
+        </form>
       )}
     </div>
   );

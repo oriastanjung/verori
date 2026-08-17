@@ -8,25 +8,28 @@ import type {
 } from "@/features/examples/dtos/example.dto";
 
 /** All API calls for this feature live here. Components never call fetch directly. */
-export async function listExamples(): Promise<Example[]> {
+export async function listExamples(published?: boolean): Promise<Example[]> {
   const { data, error } = await apiClient.GET("/api/examples", {
-    params: { query: {} },
+    params: { query: published === undefined ? {} : { published } },
   });
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
+  return data;
+}
 
+export async function getExample(id: number): Promise<Example> {
+  const { data, error } = await apiClient.GET("/api/examples/{id}", {
+    params: { path: { id } },
+  });
+
+  if (error) throw new Error(error.message);
   return data;
 }
 
 export async function createExample(input: CreateExampleInput): Promise<Example> {
   const { data, error } = await apiClient.POST("/api/examples", { body: input });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -39,10 +42,7 @@ export async function updateExample(
     body: input,
   });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -51,21 +51,7 @@ export async function deleteExample(id: number): Promise<void> {
     params: { path: { id } },
   });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
-export async function bulkDeleteExamples(ids: number[]): Promise<number> {
-  const { data, error } = await apiClient.POST("/api/examples/bulk-delete", {
-    body: { ids },
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data.affected;
+  if (error) throw new Error(error.message);
 }
 
 export async function bulkPublishExamples(
@@ -76,10 +62,16 @@ export async function bulkPublishExamples(
     body: { ids, published },
   });
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
+  return data.affected;
+}
 
+export async function bulkDeleteExamples(ids: number[]): Promise<number> {
+  const { data, error } = await apiClient.POST("/api/examples/bulk-delete", {
+    body: { ids },
+  });
+
+  if (error) throw new Error(error.message);
   return data.affected;
 }
 
@@ -88,9 +80,6 @@ export async function publishExampleToQueue(id: number): Promise<number> {
     params: { path: { id } },
   });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return data.job_id;
 }

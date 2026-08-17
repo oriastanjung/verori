@@ -198,7 +198,9 @@ Better Auth owns everything under `/api/auth`; module routes live under `/api`.
 
 ```
 src/app/(public)/          marketing pages, statically rendered
-src/app/(core-app)/        the signed-in app
+src/app/(auth)/auth/*      sign in, sign up, forgot and reset password
+src/app/(core-app)/        the signed-in app, sidebar group "Main Menu"
+src/app/(admin)/admin/*    admin only, groups "Master Data" and "User Management"
 src/components/ui/         shadcn components, do not edit by hand
 src/features/<name>/
   index.tsx                the view layer; the page renders only this
@@ -222,7 +224,32 @@ Rules:
   export type Order = components["schemas"]["OrderResponse"];
   ```
 - **Pages that read live data must set `export const dynamic = "force-dynamic"`**, otherwise the production build tries to prerender them and fails when the API is not running.
-- Both route groups cannot own `/`. `(public)` owns `/`; put app pages under a path such as `/dashboard`.
+- Route groups cannot share a path. `(public)` owns `/`, `(auth)` owns `/auth/*`, `(core-app)` owns `/dashboard/*`, `(admin)` owns `/admin/*`.
+
+### Sessions
+
+The browser never holds a token that scripts can read.
+
+- Signing in calls the api server side, then stores the returned token in an
+  httpOnly cookie (`verori.session`). Browser JavaScript cannot read it, so an
+  XSS cannot steal the session.
+- Server side code reads that cookie and forwards it to the api as
+  `Authorization: Bearer`. `src/lib/api-client.ts` does this automatically.
+- **Auth calls must send an `Origin` header** (`WEB_ORIGIN`). Better Auth
+  validates the origin whenever a request carries fetch metadata, which server
+  side `fetch` does, and rejects it with 403 otherwise.
+- Guards live in the layouts: `(auth)` bounces signed-in users out, `(core-app)`
+  requires a session, `(admin)` requires the admin role. Admins land on `/admin`
+  and everyone else on `/dashboard`, decided by `homePathFor`.
+- Better Auth's OpenAPI document has no schemas, so auth types in
+  `src/features/auth/dtos` are written by hand. App routes stay generated.
+
+### End to end tests
+
+`just e2e` runs Playwright from the browser through to the api. It needs an api
+on port 3001 and `just seed` beforehand. The tests use the dev server, because
+`next start` refuses to serve the `output: "standalone"` build this app produces
+for Docker.
 
 ## Codegen
 

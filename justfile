@@ -39,6 +39,11 @@ watch-worker:
 watch-codegen:
     cargo watch -w apps/api/src/modules -w apps/api/src/shared -s 'just codegen'
 
+# Browser tests from the web app through to the api. Needs `just seed` first
+# and an api on port 3001.
+e2e:
+    pnpm --dir apps/web exec playwright test
+
 # Create the dev admin and user accounts.
 seed:
     cargo run -q -p api --bin seed
