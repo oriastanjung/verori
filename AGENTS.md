@@ -8,15 +8,18 @@ Read this before writing code in VERORI. It describes the patterns this repo alr
 
 ## What this repo is
 
-A monorepo with three apps and four shared packages:
+A monorepo with three apps and five shared packages:
 
 ```
-apps/api        Axum HTTP API. Owns the OpenAPI document.
-apps/worker     Consumes jobs from Postgres LISTEN/NOTIFY.
-apps/web        Next.js 16 app. Consumes generated types from the api.
-packages/db     SeaORM entities and migrations. The only place SQL schema lives.
-packages/queue  Typed queue channels and publish/consume helpers.
-packages/logging Shared tracing setup.
+apps/api               Axum HTTP API. Owns the OpenAPI document.
+apps/worker            Consumes jobs from Postgres LISTEN/NOTIFY.
+apps/web               Next.js 16 app. Consumes generated types from the api.
+packages/db            SeaORM entities, migrations and the transaction helper.
+                       The only place SQL schema lives.
+packages/auth          Better Auth setup, the auth schema and the role table.
+packages/queue         Typed queue channels and publish/consume helpers.
+packages/transactional The #[transactional] proc macro.
+packages/logging       Shared tracing setup and the shutdown signal.
 ```
 
 `apps/web` is **not** a Cargo workspace member. The root `Cargo.toml` is a virtual manifest listing only the Rust crates.
@@ -298,11 +301,19 @@ Config is read once into a struct (`AppConfig`, `WorkerConfig`) via `from_env()`
 
 ```bash
 just lint     # cargo clippy --workspace --all-targets, must be clean
-just test
+just test     # includes the queue and transaction tests, which need a database
 just codegen  # if you touched api routes or dtos
 ```
 
-For web changes also run `npx next build` in `apps/web` — it typechecks and catches prerender problems that `tsc` alone misses.
+For web changes also run, inside `apps/web`:
+
+```bash
+npx tsc --noEmit   # types
+npx next build     # catches prerender problems tsc alone misses
+```
+
+If you touched anything to do with sessions, roles or the example screens, run
+the browser tests too: start the api, `just seed`, then `just e2e`.
 
 ## Things that will bite you
 
@@ -310,6 +321,11 @@ For web changes also run `npx next build` in `apps/web` — it typechecks and ca
 - `apps/web` has both `pnpm-lock.yaml` and `package-lock.json`. Local dev uses pnpm; the Docker build uses `npm ci`. If you change dependencies, update both.
 - Scalar's docs page loads its JavaScript from a CDN, so `/docs` needs internet access.
 - `sqlx` and `sea_orm` log every statement at `info`; the shared logging filter pins them to `warn`. Use `RUST_LOG` to override when debugging.
+- Server side calls to `/api/auth` must carry an `Origin` header. Better Auth validates it as soon as a request has fetch metadata, which `fetch` adds, and answers 403 without it.
+- `next start` refuses to serve the `output: "standalone"` build. Use the dev server, or `node .next/standalone/server.js`, which is what the Docker image runs.
+- Codegen needs a database, because the auth half of the OpenAPI document comes from a live auth instance.
+- The api image is ~13 MB rather than the ~6 MB it used to be. Better Auth pulls webauthn-rs, which needs OpenSSL, and there is no feature flag to drop it.
+- Adding a dependency to `apps/web`? Update **both** lockfiles, or the Docker build breaks on `npm ci`.
 
 
 # Proof read from top to bottom

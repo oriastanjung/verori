@@ -14,13 +14,15 @@ I built VERORI to solve three problems at once:
 - **A queue you already run.** Jobs live in a Postgres `jobs` table; `NOTIFY` is only a wake-up signal, and a poll interval covers any that are missed. Retries use exponential backoff, exhausted jobs land in a dead letter queue you can redrive, publishes can be deduplicated with an idempotency key, and leases are reclaimed so a job is never stranded when a worker dies. Workers claim rows with `FOR UPDATE SKIP LOCKED`, so you can run as many as you like.
 - **Small production images.** The Rust services build to `scratch` with static musl binaries: api ~13 MB (it carries Better Auth, which pulls webauthn and OpenSSL), worker ~6 MB. The Next.js image uses standalone output at ~325 MB.
 - **Clean architecture, enforced by shape.** Every module is the same five files: route, controller, service, repository, dto. Business rules never leak into handlers, and SQL never leaks into services.
+- **Auth and roles that are already wired.** Better Auth handles sign up, sign in, sessions, password reset and admin user management. Route guards live next to the routes, roles are declared in one file, and the browser never holds a token that JavaScript can read — the session sits in an httpOnly cookie and the server forwards it as a bearer token, so an XSS has nothing to steal.
+- **One transaction per service method.** Mark a method `#[tx]` and it, plus every repository call it makes, commits or rolls back together. Serialisation failures and deadlocks are retried. No handles passed around by hand.
 - **AI native.** See below.
 
 ## AI native
 
 Coding agents are good at filling in a pattern and bad at inventing one consistently. VERORI leans into that.
 
-- `just new-module` scaffolds a complete, compiling module — for the api, the worker, or the web app — and registers it everywhere it needs to be registered (module tree, dependency injection, router, queue channel enum).
+- `just new-module` scaffolds a complete, compiling module — for the api, the worker, or the web app — and registers it everywhere it needs to be registered (module tree, dependency injection, router, queue channel enum). The generated module already has its route guards and its transaction boundary in place.
 - `AGENTS.md` states the architecture rules in the form an agent reads at the start of a session.
 - Because the scaffold already compiles, an agent starts from a working module and edits it, instead of writing five files from scratch and getting the wiring subtly wrong.
 
@@ -34,8 +36,11 @@ The result: the agent spends its budget on your business logic, not on rediscove
 | Worker | Rust, sqlx `PgListener` |
 | Database | PostgreSQL |
 | Queue | Postgres `LISTEN`/`NOTIFY` + `jobs` table |
+| Auth | Better Auth (Rust), httpOnly cookie plus bearer, RBAC |
+| Transactions | `#[transactional]` proc macro over a task-local SeaORM transaction |
 | Web | Next.js 16, React 19, Tailwind 4, shadcn |
 | Codegen | utoipa → `openapi.json` → `openapi-typescript` → `openapi-fetch` |
+| Tests | `cargo test`, Playwright end to end |
 | Tasks | `just`, `mprocs`, `cargo watch` |
 
 ## Layout
@@ -46,9 +51,11 @@ apps/
   worker/     Postgres LISTEN/NOTIFY consumer
   web/        Next.js app
 packages/
-  db/         SeaORM entities + migrations
-  queue/      Typed queue channels, publish/consume helpers
-  logging/    Shared tracing setup
+  db/             SeaORM entities, migrations, transaction helper
+  auth/           Better Auth setup, auth schema, role definitions
+  queue/          Typed queue channels, publish/consume helpers
+  transactional/  The #[transactional] proc macro
+  logging/        Shared tracing setup, shutdown signal
 scripts/
   new-module.ts   Module scaffolder
 ```

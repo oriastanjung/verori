@@ -502,6 +502,19 @@ export const INITIAL_ACTION_STATE: ActionState = {
 
 import type { ${pascal} } from "@/features/${slug}/dtos/${slug}.dto";
 
+/**
+ * Every API call for this feature belongs here. Components and actions never
+ * call fetch directly.
+ *
+ * Use the generated client once the api has a matching route. It attaches the
+ * session automatically:
+ *
+ *   import { apiClient } from "@/lib/api-client";
+ *
+ *   const { data, error } = await apiClient.GET("/api/${slug}");
+ *   if (error) throw new Error(error.message);
+ *   return data;
+ */
 export async function list${pascal}(): Promise<${pascal}[]> {
   return [];
 }
@@ -605,9 +618,16 @@ export async function ${pascal}View() {
 `,
   );
 
-  console.log(`\nAdd a page that renders it, for example`);
-  console.log(`    apps/web/src/app/(core-app)/${slug}/page.tsx`);
+  console.log("\nAdd a page that renders it. For the signed-in app:");
+  console.log(`    apps/web/src/app/(core-app)/dashboard/${slug}/page.tsx`);
+  console.log("or, for admins only:");
+  console.log(`    apps/web/src/app/(admin)/admin/${slug}/page.tsx`);
+  console.log("\nThe page should contain nothing but this:");
   console.log(`    import { ${pascal}View } from "@/features/${slug}";`);
+  console.log('    export const dynamic = "force-dynamic";');
+  console.log(`    export default function Page() { return <${pascal}View />; }`);
+  console.log("\nThen add it to the sidebar in src/app/(core-app)/layout.tsx");
+  console.log("or src/app/(admin)/layout.tsx.");
 }
 
 async function ask(question: string, options: readonly string[] = []): Promise<string> {
