@@ -1,470 +1,54 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "API",
-    "description": "Rust Axum + SeaORM monorepo API",
-    "license": {
-      "name": ""
-    },
-    "version": "0.1.0"
-  },
-  "paths": {
-    "/api/examples": {
-      "get": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "list_examples",
-        "parameters": [
-          {
-            "name": "published",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": [
-                "boolean",
-                "null"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ExampleResponse"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "create_example",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateExampleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExampleResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/examples/bulk": {
-      "patch": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "bulk_update_examples",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BulkUpdateExampleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkResultResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/examples/bulk-delete": {
-      "post": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "bulk_delete_examples",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BulkDeleteExampleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkResultResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/examples/{id}": {
-      "get": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "get_example",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Example id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExampleResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "update_example",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Example id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateExampleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExampleResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "delete_example",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Example id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          },
-          "404": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/examples/{id}/publish": {
-      "post": {
-        "tags": [
-          "example"
-        ],
-        "operationId": "publish_example",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Example id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublishJobResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
   "components": {
     "schemas": {
       "BulkDeleteExampleRequest": {
-        "type": "object",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
         "required": [
           "ids"
         ],
-        "properties": {
-          "ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        }
+        "type": "object"
       },
       "BulkResultResponse": {
-        "type": "object",
+        "properties": {
+          "affected": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         "required": [
           "affected"
         ],
-        "properties": {
-          "affected": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          }
-        }
+        "type": "object"
       },
       "BulkUpdateExampleRequest": {
-        "type": "object",
-        "required": [
-          "ids",
-          "published"
-        ],
         "properties": {
           "ids": {
-            "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int32"
-            }
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
           },
           "published": {
             "type": "boolean"
           }
-        }
+        },
+        "required": [
+          "ids",
+          "published"
+        ],
+        "type": "object"
       },
       "CreateExampleRequest": {
-        "type": "object",
-        "required": [
-          "title"
-        ],
         "properties": {
           "content": {
             "type": [
@@ -475,28 +59,24 @@
           "title": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
       },
       "ErrorBody": {
-        "type": "object",
-        "required": [
-          "message"
-        ],
         "properties": {
           "message": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
       },
       "ExampleResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "title",
-          "published",
-          "created_at",
-          "updated_at"
-        ],
         "properties": {
           "content": {
             "type": [
@@ -505,12 +85,12 @@
             ]
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "type": "string"
           },
           "id": {
-            "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "type": "integer"
           },
           "published": {
             "type": "boolean"
@@ -519,25 +99,32 @@
             "type": "string"
           },
           "updated_at": {
-            "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "type": "string"
           }
-        }
+        },
+        "required": [
+          "id",
+          "title",
+          "published",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
       },
       "PublishJobResponse": {
-        "type": "object",
+        "properties": {
+          "job_id": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
         "required": [
           "job_id"
         ],
-        "properties": {
-          "job_id": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
+        "type": "object"
       },
       "UpdateExampleRequest": {
-        "type": "object",
         "properties": {
           "content": {
             "type": [
@@ -557,14 +144,949 @@
               "null"
             ]
           }
-        }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Rust Axum + SeaORM monorepo API",
+    "license": {
+      "name": ""
+    },
+    "title": "API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/auth/admin/ban-user": {
+      "post": {
+        "operationId": "admin_ban_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin ban user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/create-user": {
+      "post": {
+        "operationId": "admin_create_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin create user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/get-user": {
+      "get": {
+        "operationId": "admin_get_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin get user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/has-permission": {
+      "post": {
+        "operationId": "admin_has_permission",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin has permission",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/impersonate-user": {
+      "post": {
+        "operationId": "admin_impersonate_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin impersonate user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/list-user-sessions": {
+      "post": {
+        "operationId": "admin_list_user_sessions",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin list user sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/list-users": {
+      "get": {
+        "operationId": "admin_list_users",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin list users",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/remove-user": {
+      "post": {
+        "operationId": "admin_remove_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin remove user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/revoke-user-session": {
+      "post": {
+        "operationId": "admin_revoke_user_session",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin revoke user session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/revoke-user-sessions": {
+      "post": {
+        "operationId": "admin_revoke_user_sessions",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin revoke user sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/set-role": {
+      "post": {
+        "operationId": "admin_set_role",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin set role",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/set-user-password": {
+      "post": {
+        "operationId": "admin_set_user_password",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin set user password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/stop-impersonating": {
+      "post": {
+        "operationId": "admin_stop_impersonating",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin stop impersonating",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/unban-user": {
+      "post": {
+        "operationId": "admin_unban_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin unban user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/admin/update-user": {
+      "post": {
+        "operationId": "admin_update_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "admin update user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "operationId": "change_password",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "change password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/error": {
+      "get": {
+        "operationId": "error",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "error",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/get-session": {
+      "get": {
+        "operationId": "get_session",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "get session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/is-username-available": {
+      "post": {
+        "operationId": "is_username_available",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "is username available",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/list-accounts": {
+      "get": {
+        "operationId": "list_accounts",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "list accounts",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/list-sessions": {
+      "get": {
+        "operationId": "list_sessions",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "list sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/ok": {
+      "get": {
+        "operationId": "ok",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "ok",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/request-password-reset": {
+      "post": {
+        "operationId": "request_password_reset",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "request password reset",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "operationId": "reset_password",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "reset password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/reset-password/{token}": {
+      "get": {
+        "operationId": "reset_password_token",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "reset password token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/revoke-other-sessions": {
+      "post": {
+        "operationId": "revoke_other_sessions",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "revoke other sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/revoke-session": {
+      "post": {
+        "operationId": "revoke_session",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "revoke session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/revoke-sessions": {
+      "post": {
+        "operationId": "revoke_sessions",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "revoke sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/send-verification-email": {
+      "post": {
+        "operationId": "send_verification_email",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "send verification email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sign-in/email": {
+      "post": {
+        "operationId": "sign_in_email",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "sign in email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sign-in/username": {
+      "post": {
+        "operationId": "sign_in_username",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "sign in username",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sign-out": {
+      "post": {
+        "operationId": "sign_out",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "sign out",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sign-up/email": {
+      "post": {
+        "operationId": "sign_up_email",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "sign up email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/unlink-account": {
+      "post": {
+        "operationId": "unlink_account",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "unlink account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/update-user": {
+      "post": {
+        "operationId": "update_user",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "update user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/verify-email": {
+      "get": {
+        "operationId": "verify_email",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "verify email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/verify-password": {
+      "post": {
+        "operationId": "verify_password",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "summary": "verify password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/examples": {
+      "get": {
+        "operationId": "list_examples",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "published",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ExampleResponse"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
+      },
+      "post": {
+        "operationId": "create_example",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
+      }
+    },
+    "/api/examples/bulk": {
+      "patch": {
+        "operationId": "bulk_update_examples",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkUpdateExampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
+      }
+    },
+    "/api/examples/bulk-delete": {
+      "post": {
+        "operationId": "bulk_delete_examples",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDeleteExampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
+      }
+    },
+    "/api/examples/{id}": {
+      "delete": {
+        "operationId": "delete_example",
+        "parameters": [
+          {
+            "description": "Example id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
+      },
+      "get": {
+        "operationId": "get_example",
+        "parameters": [
+          {
+            "description": "Example id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
+      },
+      "put": {
+        "operationId": "update_example",
+        "parameters": [
+          {
+            "description": "Example id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExampleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
+      }
+    },
+    "/api/examples/{id}/publish": {
+      "post": {
+        "operationId": "publish_example",
+        "parameters": [
+          {
+            "description": "Example id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishJobResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "example"
+        ]
       }
     }
   },
   "tags": [
     {
-      "name": "example",
-      "description": "Example module"
+      "description": "Example module",
+      "name": "example"
+    },
+    {
+      "description": "Sign up, sign in, sessions, password and admin user management",
+      "name": "auth"
     }
   ]
 }

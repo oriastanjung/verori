@@ -19,6 +19,7 @@ use utoipa_scalar::{Scalar, Servable};
 use auth::{Auth, AxumIntegration};
 
 use crate::modules::example::{example_routes, example_routes_for_docs};
+use crate::shared::docs::merged_spec;
 use crate::shared::openapi::ApiDoc;
 use crate::shared::state::AppState;
 
@@ -75,18 +76,21 @@ pub fn build_app(
         .merge(api_router(state.clone()))
         .split_for_parts();
 
-    let openapi_json = serde_json::to_value(&api).expect("openapi must serialize");
+    // The docs page and /openapi.json both show the app routes plus the
+    // Better Auth routes.
+    let openapi_json = merged_spec(&api, auth.as_ref());
+    let served_spec = openapi_json.clone();
 
     let router = router
         .route("/health", get(health))
         .route(
             "/openapi.json",
             get(move || {
-                let document = openapi_json.clone();
+                let document = served_spec.clone();
                 async move { Json(document) }
             }),
         )
-        .merge(Scalar::with_url("/docs", api.clone()))
+        .merge(Scalar::with_url("/docs", openapi_json.clone()))
         .route("/docs/", get(|| async { Redirect::permanent("/docs") }))
         // Better Auth owns every route under this prefix: sign-up, sign-in,
         // sessions, password reset, admin user management.

@@ -226,7 +226,14 @@ Rules:
 
 ## Codegen
 
-`utoipa` (Rust) → `openapi.json` → `openapi-typescript` → `src/generated/api-types.ts`.
+`utoipa` (Rust) + the Better Auth spec → `openapi.json` → `openapi-typescript` → `src/generated/api-types.ts`.
+
+The two specs are merged in `apps/api/src/shared/docs.rs`, because Better Auth
+generates its own document and there is no library level merge. Auth paths are
+prefixed with `/api/auth` and tagged `auth`.
+
+**Codegen needs a reachable database**, since the auth routes come from a live
+auth instance.
 
 - `just codegen` runs the whole chain.
 - `just dev` runs it automatically whenever `apps/api/src/modules` or `apps/api/src/shared` changes.

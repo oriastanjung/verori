@@ -9,7 +9,7 @@ import type {
 
 /** All API calls for this feature live here. Components never call fetch directly. */
 export async function listExamples(): Promise<Example[]> {
-  const { data, error } = await apiClient.GET("/examples", {
+  const { data, error } = await apiClient.GET("/api/examples", {
     params: { query: {} },
   });
 
@@ -21,7 +21,7 @@ export async function listExamples(): Promise<Example[]> {
 }
 
 export async function createExample(input: CreateExampleInput): Promise<Example> {
-  const { data, error } = await apiClient.POST("/examples", { body: input });
+  const { data, error } = await apiClient.POST("/api/examples", { body: input });
 
   if (error) {
     throw new Error(error.message);
@@ -34,7 +34,7 @@ export async function updateExample(
   id: number,
   input: UpdateExampleInput,
 ): Promise<Example> {
-  const { data, error } = await apiClient.PUT("/examples/{id}", {
+  const { data, error } = await apiClient.PUT("/api/examples/{id}", {
     params: { path: { id } },
     body: input,
   });
@@ -47,7 +47,7 @@ export async function updateExample(
 }
 
 export async function deleteExample(id: number): Promise<void> {
-  const { error } = await apiClient.DELETE("/examples/{id}", {
+  const { error } = await apiClient.DELETE("/api/examples/{id}", {
     params: { path: { id } },
   });
 
@@ -57,7 +57,7 @@ export async function deleteExample(id: number): Promise<void> {
 }
 
 export async function bulkDeleteExamples(ids: number[]): Promise<number> {
-  const { data, error } = await apiClient.POST("/examples/bulk-delete", {
+  const { data, error } = await apiClient.POST("/api/examples/bulk-delete", {
     body: { ids },
   });
 
@@ -72,7 +72,7 @@ export async function bulkPublishExamples(
   ids: number[],
   published: boolean,
 ): Promise<number> {
-  const { data, error } = await apiClient.PATCH("/examples/bulk", {
+  const { data, error } = await apiClient.PATCH("/api/examples/bulk", {
     body: { ids, published },
   });
 
@@ -84,7 +84,7 @@ export async function bulkPublishExamples(
 }
 
 export async function publishExampleToQueue(id: number): Promise<number> {
-  const { data, error } = await apiClient.POST("/examples/{id}/publish", {
+  const { data, error } = await apiClient.POST("/api/examples/{id}/publish", {
     params: { path: { id } },
   });
 

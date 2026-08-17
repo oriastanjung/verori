@@ -20,8 +20,9 @@ worker:
 web:
     pnpm --dir apps/web dev
 
+# Needs the database: the auth routes come from a live auth instance.
 openapi:
-    cargo run -q -p api --bin export-openapi -- openapi.json
+    set -a && . apps/api/.env && set +a && cargo run -q -p api --bin export-openapi -- openapi.json
 
 codegen: openapi
     pnpm --dir apps/web exec openapi-typescript ../../openapi.json -o src/generated/api-types.ts
