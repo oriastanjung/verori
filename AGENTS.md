@@ -151,9 +151,13 @@ impl Consumer for OrderShippedConsumer {
 ## Queue rules (`packages/queue`)
 
 - **Channel names are never strings at the call site.** Add a variant to `QueueChannel` and use it. The scaffolder does this for you.
-- Publishing inserts a row into `jobs` and then fires `NOTIFY`. The row is the source of truth; the notification is only a wake-up.
+- Publishing inserts a row into `jobs` and then fires `NOTIFY`. The row is the source of truth; the notification is only a wake-up, and the worker also polls on an interval in case one is missed.
 - Workers claim rows with `FOR UPDATE SKIP LOCKED`, so running several workers is safe.
 - `NOTIFY` payloads are capped by Postgres, so never put business data in them — only the job id.
+- **Consumers must be idempotent.** Delivery is at-least-once: if a worker dies after doing the work but before marking the job done, the lease expires and the job runs again. Use `PublishOptions::with_idempotency_key` to deduplicate the *enqueue*, but the handler itself still has to tolerate a repeat.
+- A failed job is retried with exponential backoff until `max_attempts`, then becomes `dead`. Inspect with `just queue-status`, recover with `just queue-redrive <channel>`.
+- Retry budget is a publish-time decision (`PublishOptions::max_attempts`), not a worker setting. The column default is 5.
+- Worker tuning lives in `apps/worker/.env`: concurrency, batch size, lease, poll interval, backoff.
 
 ## Web pattern (`apps/web`)
 
@@ -194,6 +198,14 @@ Rules:
 - `openapi.json` and `src/generated/` are **committed on purpose**, so the web app builds without a Rust toolchain.
 - Never edit generated files. Change the Rust types and re-run codegen.
 
+## Graceful shutdown
+
+Both binaries listen for Ctrl+C and SIGTERM via `logging::shutdown::signal_received()`.
+
+- The api uses `axum::serve(...).with_graceful_shutdown(...)`, so in-flight requests finish.
+- The worker stops claiming new jobs but lets the current batch finish, so nothing is abandoned while leased.
+- Both close the sqlx pool and the SeaORM connection before exiting.
+
 ## Ports and config
 
 | Service | Port |
@@ -201,7 +213,15 @@ Rules:
 | Web | 3000 |
 | API (and `/docs`) | 3001 |
 
-`PORT` in `.env` belongs to the api. The `web` recipe pins `PORT=3000` itself, because `just` loads `.env` for every recipe.
+**Every app owns its own `.env` and `.env.example`.** There is no root `.env`:
+
+```
+apps/api/.env      DATABASE_URL, HOST, PORT
+apps/worker/.env   DATABASE_URL, WORKER_* tuning
+apps/web/.env      PORT, API_BASE_URL, NEXT_PUBLIC_API_BASE_URL
+```
+
+Each Rust app loads its own file from `CARGO_MANIFEST_DIR`, so it works no matter where you run the binary from. Recipes that need a database (`migrate`, `test`) source `apps/api/.env` explicitly.
 
 Config is read once into a struct (`AppConfig`, `WorkerConfig`) via `from_env()`. Do not call `std::env::var` anywhere else.
 

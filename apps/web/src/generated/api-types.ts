@@ -118,7 +118,7 @@ export interface components {
             updated_at: string;
         };
         PublishJobResponse: {
-            /** Format: int32 */
+            /** Format: int64 */
             job_id: number;
         };
         UpdateExampleRequest: {

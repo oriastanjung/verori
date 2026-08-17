@@ -11,7 +11,7 @@ I built VERORI to solve three problems at once:
 ## Why use this instead of rolling your own
 
 - **One source of truth for the API.** Routes are declared once in Rust with `utoipa`. The OpenAPI spec, the Scalar docs page, and the TypeScript types all come from that same declaration. Rename a field in Rust and the Next.js build fails until you fix the caller.
-- **A queue you already run.** Jobs live in a Postgres `jobs` table; `NOTIFY` is only a wake-up signal. A missed notification cannot lose a job because the table is the source of truth, and workers claim rows with `FOR UPDATE SKIP LOCKED`.
+- **A queue you already run.** Jobs live in a Postgres `jobs` table; `NOTIFY` is only a wake-up signal, and a poll interval covers any that are missed. Retries use exponential backoff, exhausted jobs land in a dead letter queue you can redrive, publishes can be deduplicated with an idempotency key, and leases are reclaimed so a job is never stranded when a worker dies. Workers claim rows with `FOR UPDATE SKIP LOCKED`, so you can run as many as you like.
 - **Tiny production images.** The Rust services build to `scratch` with static musl binaries: api ~6 MB, worker ~5 MB. The Next.js image uses standalone output at ~323 MB.
 - **Clean architecture, enforced by shape.** Every module is the same five files: route, controller, service, repository, dto. Business rules never leak into handlers, and SQL never leaks into services.
 - **AI native.** See below.
@@ -55,13 +55,17 @@ scripts/
 
 ## Getting started
 
-You need Rust, Bun (or Node), `just`, `mprocs`, `cargo-watch`, and a Postgres you can reach.
+You need Rust, pnpm (or Node), `just`, `mprocs`, `cargo-watch`, and a Postgres you can reach.
 
 ```bash
-cp .env.example .env      # then edit DATABASE_URL
+cp apps/api/.env.example apps/api/.env
+cp apps/worker/.env.example apps/worker/.env
+cp apps/web/.env.example apps/web/.env
 just migrate
 just dev
 ```
+
+Each app owns its own `.env`; there is no root one.
 
 `just dev` runs migrations, then opens four panes: api, worker, codegen, web.
 
@@ -84,6 +88,8 @@ just migrate               # apply migrations
 just lint                  # cargo clippy across the workspace
 just test                  # cargo test across the workspace
 just docker-build          # build all three images
+just queue-status          # job counts per status, per channel
+just queue-redrive <chan>  # move dead jobs back to pending
 ```
 
 Run `just` with no arguments to list everything.

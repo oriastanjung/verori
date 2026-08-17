@@ -1,4 +1,5 @@
 use std::env;
+use std::path::Path;
 
 use thiserror::Error;
 
@@ -21,9 +22,9 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    /// Reads `.env` (if present) then the process environment.
+    /// Reads this app's own `.env` (if present) then the process environment.
     pub fn from_env() -> Result<AppConfig, ConfigError> {
-        let _ = dotenvy::dotenv();
+        let _ = dotenvy::from_path(Path::new(env!("CARGO_MANIFEST_DIR")).join(".env"));
 
         let database_url =
             env::var("DATABASE_URL").map_err(|_| ConfigError::Missing("DATABASE_URL"))?;

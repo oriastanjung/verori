@@ -4,23 +4,20 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     network_mode: host
-    env_file: .env
+    env_file: apps/api/.env
 
   worker:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
     network_mode: host
-    env_file: .env
+    env_file: apps/worker/.env
 
   web:
     build:
       context: apps/web
       dockerfile: Dockerfile
     network_mode: host
-    environment:
-      - PORT=3000
-      - API_BASE_URL=http://localhost:3001
-      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+    env_file: apps/web/.env
     depends_on:
       - api

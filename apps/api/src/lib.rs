@@ -1,6 +1,6 @@
 pub mod config;
-pub mod shared;
 pub mod modules;
+pub mod shared;
 
 use axum::response::Redirect;
 use axum::routing::get;
@@ -12,12 +12,13 @@ use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_scalar::{Scalar, Servable};
 
+use crate::modules::example::example_routes;
 use crate::shared::openapi::ApiDoc;
 use crate::shared::state::AppState;
-use crate::modules::example::example_routes;
 
 /// Builds the router and the OpenAPI document from the same route definitions.
 pub fn build_app(db: DatabaseConnection, pool: PgPool) -> (Router, utoipa::openapi::OpenApi) {
+    // app state is the dependency injection container for all services
     let state = AppState::new(db, pool);
 
     let (router, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())

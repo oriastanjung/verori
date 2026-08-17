@@ -1,7 +1,7 @@
 use std::fmt;
 
 /// Every queue name in the system. Add a variant here before you can publish to it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum QueueChannel {
     ExampleCreated,
     ExamplePublished,

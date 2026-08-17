@@ -1,16 +1,15 @@
-set dotenv-load := true
-
 default:
     @just --list
 
 build:
     cargo build --workspace
 
+# Migrations use the api's DATABASE_URL.
 migrate:
-    cargo run -p migration -- up
+    set -a && . apps/api/.env && set +a && cargo run -p migration -- up
 
 migrate-fresh:
-    cargo run -p migration -- fresh
+    set -a && . apps/api/.env && set +a && cargo run -p migration -- fresh
 
 api:
     cargo run -p api
@@ -18,9 +17,8 @@ api:
 worker:
     cargo run -p worker
 
-# PORT in .env belongs to the api, so the web port is pinned here.
 web:
-    PORT=3000 pnpm --dir apps/web dev
+    pnpm --dir apps/web dev
 
 openapi:
     cargo run -q -p api --bin export-openapi -- openapi.json
@@ -44,8 +42,9 @@ watch-codegen:
 new-module *args:
     bun scripts/new-module.ts {{args}}
 
+# Queue tests need a database, so they use the api's DATABASE_URL.
 test:
-    cargo test --workspace
+    set -a && . apps/api/.env && set +a && cargo test --workspace
 
 fmt:
     cargo fmt --all
@@ -67,3 +66,11 @@ docker-down:
 
 docker-logs:
     docker compose logs -f
+
+# Move dead jobs on a channel back to pending.
+queue-redrive channel:
+    cargo run -q -p worker --bin queue-admin -- redrive {{channel}}
+
+# Show job counts per status for every channel.
+queue-status:
+    cargo run -q -p worker --bin queue-admin -- status

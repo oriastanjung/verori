@@ -58,7 +58,7 @@ pub struct BulkResultResponse {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PublishJobResponse {
-    pub job_id: i32,
+    pub job_id: i64,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]

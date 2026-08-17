@@ -21,7 +21,8 @@ async fn main() {
         .await
         .expect("failed to connect sea-orm");
 
-    let (app, _) = build_app(db, pool);
+    // core build app startup here
+    let (app, _) = build_app(db.clone(), pool.clone());
 
     let address = config.bind_address();
     let listener = tokio::net::TcpListener::bind(&address)
@@ -30,5 +31,15 @@ async fn main() {
 
     tracing::info!(address = %address, "api listening");
 
-    axum::serve(listener, app).await.expect("server error");
+    // Stops accepting new connections on a signal and lets in-flight requests
+    // finish before the process exits.
+    axum::serve(listener, app)
+        .with_graceful_shutdown(logging::shutdown::signal_received())
+        .await
+        .expect("server error");
+
+    pool.close().await;
+    let _ = db::close(db).await;
+
+    tracing::info!("api shutdown complete");
 }

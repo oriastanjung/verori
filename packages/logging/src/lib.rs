@@ -1,3 +1,5 @@
+pub mod shutdown;
+
 use tracing_subscriber::EnvFilter;
 
 const DEFAULT_FILTER: &str = "info,sqlx=warn,sea_orm=warn";

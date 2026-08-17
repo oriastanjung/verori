@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::json;
 use sqlx::PgPool;
 
-use queue::QueueChannel;
+use queue::{PublishOptions, QueueChannel};
 
 use crate::shared::error::{AppError, AppResult};
 use crate::modules::example::dto::{
@@ -25,7 +25,7 @@ pub trait ExampleService: Send + Sync {
     async fn delete(&self, id: i32) -> AppResult<()>;
     async fn bulk_update(&self, input: BulkUpdateExampleRequest) -> AppResult<u64>;
     async fn bulk_delete(&self, input: BulkDeleteExampleRequest) -> AppResult<u64>;
-    async fn publish_to_queue(&self, id: i32) -> AppResult<i32>;
+    async fn publish_to_queue(&self, id: i32) -> AppResult<i64>;
 }
 
 pub struct DefaultExampleService {
@@ -69,10 +69,12 @@ impl ExampleService for DefaultExampleService {
 
         let record = self.repository.create(input).await?;
 
+        // One created-event per example, even if this handler runs twice.
         queue::publish(
             &self.pool,
             QueueChannel::ExampleCreated,
             json!({ "example_id": record.id }),
+            PublishOptions::with_idempotency_key(format!("example-created-{}", record.id)),
         )
         .await?;
 
@@ -120,7 +122,7 @@ impl ExampleService for DefaultExampleService {
         Ok(affected)
     }
 
-    async fn publish_to_queue(&self, id: i32) -> AppResult<i32> {
+    async fn publish_to_queue(&self, id: i32) -> AppResult<i64> {
         let record = self
             .repository
             .find_by_id(id)
@@ -134,6 +136,7 @@ impl ExampleService for DefaultExampleService {
             &self.pool,
             QueueChannel::ExamplePublished,
             json!({ "example_id": record.id, "title": record.title }),
+            PublishOptions::default(),
         )
         .await?;
 
