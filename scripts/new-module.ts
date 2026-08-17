@@ -87,10 +87,8 @@ function appendModule(path: string, name: string): void {
 }
 
 function scaffoldEntityAndMigration(name: string): void {
-  const pascal = toPascal(name);
   const pluralPascal = toPascal(name) + "s";
 
-  // 1. Scaffold Entity
   const entityBase = join(ROOT, "packages/db/src/entities");
   write(
     join(entityBase, `${name}.rs`),
@@ -115,9 +113,8 @@ impl ActiveModelBehavior for ActiveModel {}
   );
   appendModule(join(entityBase, "mod.rs"), name);
 
-  // 2. Scaffold Migration
   const now = new Date();
-  const timestamp = now.toISOString().replace(/[-:T]/g, "").slice(0, 14); // YYYYMMDDHHMMSS
+  const timestamp = now.toISOString().replace(/[-:T]/g, "").slice(0, 14);
   const migrationName = `m${timestamp}_create_${name}_table`;
   const migrationPath = join(ROOT, "packages/db/migration/src", `${migrationName}.rs`);
 
@@ -173,12 +170,10 @@ enum ${pluralPascal} {
 `
   );
 
-  // Try to inject into migration lib.rs
   const migrationLib = join(ROOT, "packages/db/migration/src/lib.rs");
   insertAfter(migrationLib, "mod m", `mod ${migrationName};`);
   insertAfter(migrationLib, "vec![", `            Box::new(${migrationName}::Migration),`);
 }
-
 
 function scaffoldApi(name: string, withPublish: boolean): void {
   const pascal = toPascal(name);
@@ -267,6 +262,7 @@ pub struct ${pascal}Page {
 `
   );
 
+  // Removed unused `Condition` from sea_orm imports
   write(
     join(base, "repository.rs"),
     `use std::sync::Arc;
@@ -420,14 +416,11 @@ pub fn create_${name}_repository(db: DatabaseConnection) -> Arc<dyn ${pascal}Rep
     `use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde_json::json;
-use sea_orm::DatabaseConnection;
-use sqlx::PgPool;
-use uuid::Uuid;
+${withPublish ? `use serde_json::json;\n` : ''}use sea_orm::DatabaseConnection;
+${withPublish ? `use sqlx::PgPool;\n` : ''}use uuid::Uuid;
 use transactional::transactional;
 
-use queue::{PublishOptions, QueueChannel};
-
+${withPublish ? `use queue::{PublishOptions, QueueChannel};\n` : ''}
 use crate::shared::error::{AppError, AppResult};
 use crate::modules::${name}::dto::{
     BulkDelete${pascal}Request, BulkUpdate${pascal}Request, Create${pascal}Request, ${pascal}Page,
@@ -456,8 +449,7 @@ pub trait ${pascal}Service: Send + Sync {
 
 pub struct Default${pascal}Service {
     repository: Arc<dyn ${pascal}Repository>,
-    pool: PgPool,
-    db: DatabaseConnection,
+    ${withPublish ? `pool: PgPool,\n` : ''}    db: DatabaseConnection,
 }
 
 impl Default${pascal}Service {
@@ -562,10 +554,9 @@ ${withPublish ? `
 
 pub fn create_${name}_service(
     repository: Arc<dyn ${pascal}Repository>,
-    pool: PgPool,
-    db: DatabaseConnection,
+    ${withPublish ? `pool: PgPool,\n` : ''}    db: DatabaseConnection,
 ) -> Arc<dyn ${pascal}Service> {
-    Arc::new(Default${pascal}Service { repository, pool, db })
+    Arc::new(Default${pascal}Service { repository, ${withPublish ? `pool, ` : ''}db })
 }
 `
   );
@@ -761,7 +752,13 @@ pub use service::{create_${name}_service, ${pascal}Service};
   const statePath = join(ROOT, "apps/api/src/shared/state.rs");
   insertAfter(statePath, "use crate::modules::example::", `use crate::modules::${name}::{create_${name}_repository, create_${name}_service, ${pascal}Service};`);
   insertAfter(statePath, "pub struct AppState {", `    pub ${name}_service: Arc<dyn ${pascal}Service>,`);
-  insertAfter(statePath, "        let example_service = create_example_service(", `        let ${name}_repository = create_${name}_repository(db.clone());\n        let ${name}_service = create_${name}_service(${name}_repository, pool.clone(), db.clone());`);
+
+  if (withPublish) {
+    insertAfter(statePath, "        let example_service = create_example_service(", `        let ${name}_repository = create_${name}_repository(db.clone());\n        let ${name}_service = create_${name}_service(${name}_repository, pool.clone(), db.clone());`);
+  } else {
+    insertAfter(statePath, "        let example_service = create_example_service(", `        let ${name}_repository = create_${name}_repository(db.clone());\n        let ${name}_service = create_${name}_service(${name}_repository, db.clone());`);
+  }
+
   insertAfter(statePath, "        AppState {", `            ${name}_service,`);
 
   const libPath = join(ROOT, "apps/api/src/lib.rs");
@@ -781,10 +778,370 @@ function addQueueChannel(variant: string, channel: string): void {
 
   insertAfter(path, "pub enum QueueChannel {", `    ${variant},`);
   insertAfter(path, "    pub const ALL:", `        QueueChannel::${variant},`);
-  insertAfter(path, "        match self {", `            QueueChannel::${variant} => "${channel}",`);
+  insertAfter(
+    path,
+    "        match self {",
+    `            QueueChannel::${variant} => "${channel}",`,
+  );
 }
 
-// ... [Keep scaffoldWorker and scaffoldWeb exactly the same as your original script] ...
+function scaffoldWorker(name: string, channel: string): void {
+  const pascal = toPascal(name);
+  const variant = toPascal(channel);
+  const base = join(ROOT, "apps/worker/src/modules", name);
+
+  write(
+    join(base, "dto.rs"),
+    `use serde::Deserialize;
+use uuid::Uuid;
+
+#[derive(Debug, Deserialize)]
+pub struct ${pascal}Payload {
+    pub id: Uuid,
+}
+`,
+  );
+
+  write(
+    join(base, "repository.rs"),
+    `use std::sync::Arc;
+
+use async_trait::async_trait;
+use sea_orm::{DatabaseConnection, DbErr};
+use uuid::Uuid;
+
+use db::tx;
+
+#[async_trait]
+pub trait ${pascal}Repository: Send + Sync {
+    async fn exists(&self, id: Uuid) -> Result<bool, DbErr>;
+}
+
+pub struct SeaOrm${pascal}Repository {
+    db: DatabaseConnection,
+}
+
+#[async_trait]
+impl ${pascal}Repository for SeaOrm${pascal}Repository {
+    async fn exists(&self, _id: Uuid) -> Result<bool, DbErr> {
+        // Query through tx::conn so the call joins the service transaction.
+        let _connection = tx::conn(&self.db);
+        Ok(true)
+    }
+}
+
+pub fn create_${name}_repository(db: DatabaseConnection) -> Arc<dyn ${pascal}Repository> {
+    Arc::new(SeaOrm${pascal}Repository { db })
+}
+`,
+  );
+
+  write(
+    join(base, "service.rs"),
+    `use std::sync::Arc;
+
+use async_trait::async_trait;
+use sea_orm::DatabaseConnection;
+use transactional::transactional;
+use uuid::Uuid;
+
+use crate::modules::${name}::repository::${pascal}Repository;
+use crate::shared::error::{WorkerError, WorkerResult};
+
+#[async_trait]
+pub trait ${pascal}Service: Send + Sync {
+    async fn handle(&self, id: Uuid) -> WorkerResult<()>;
+}
+
+pub struct Default${pascal}Service {
+    repository: Arc<dyn ${pascal}Repository>,
+    db: DatabaseConnection,
+}
+
+#[transactional]
+#[async_trait]
+impl ${pascal}Service for Default${pascal}Service {
+    #[tx]
+    async fn handle(&self, id: Uuid) -> WorkerResult<()> {
+        if !self.repository.exists(id).await? {
+            return Err(WorkerError::InvalidPayload(format!("${name} {id} does not exist")));
+        }
+
+        tracing::info!(%id, "${name} handled");
+        Ok(())
+    }
+}
+
+pub fn create_${name}_service(
+    repository: Arc<dyn ${pascal}Repository>,
+    db: DatabaseConnection,
+) -> Arc<dyn ${pascal}Service> {
+    Arc::new(Default${pascal}Service { repository, db })
+}
+`,
+  );
+
+  write(
+    join(base, "consumer.rs"),
+    `use std::sync::Arc;
+
+use async_trait::async_trait;
+
+use queue::{Job, QueueChannel};
+
+use crate::modules::${name}::dto::${pascal}Payload;
+use crate::modules::${name}::service::${pascal}Service;
+use crate::shared::consumer::Consumer;
+use crate::shared::error::{WorkerError, WorkerResult};
+
+pub struct ${pascal}Consumer {
+    service: Arc<dyn ${pascal}Service>,
+}
+
+#[async_trait]
+impl Consumer for ${pascal}Consumer {
+    fn channel(&self) -> QueueChannel {
+        QueueChannel::${variant}
+    }
+
+    async fn handle(&self, job: &Job) -> WorkerResult<()> {
+        let payload: ${pascal}Payload = serde_json::from_value(job.payload.clone())
+            .map_err(|error| WorkerError::InvalidPayload(error.to_string()))?;
+
+        self.service.handle(payload.id).await
+    }
+}
+
+pub fn create_${name}_consumer(service: Arc<dyn ${pascal}Service>) -> Arc<dyn Consumer> {
+    Arc::new(${pascal}Consumer { service })
+}
+`,
+  );
+
+  write(
+    join(base, "mod.rs"),
+    `pub mod consumer;
+pub mod dto;
+pub mod repository;
+pub mod service;
+
+pub use consumer::create_${name}_consumer;
+pub use repository::create_${name}_repository;
+pub use service::create_${name}_service;
+`,
+  );
+
+  appendModule(join(ROOT, "apps/worker/src/modules/mod.rs"), name);
+  addQueueChannel(variant, channel);
+
+  const statePath = join(ROOT, "apps/worker/src/shared/state.rs");
+  insertAfter(
+    statePath,
+    "use crate::shared::consumer::Consumer;",
+    `use crate::modules::${name}::{create_${name}_consumer, create_${name}_repository, create_${name}_service};`,
+  );
+  insertAfter(
+    statePath,
+    "    let example_service = create_example_service(",
+    `    let ${name}_repository = create_${name}_repository(db.clone());\n    let ${name}_service = create_${name}_service(${name}_repository, db.clone());`,
+  );
+  insertAfter(statePath, "    vec![", `        create_${name}_consumer(${name}_service),`);
+}
+
+function scaffoldWeb(name: string): void {
+  const pascal = toPascal(name);
+  const slug = toKebab(name);
+  const base = join(ROOT, "apps/web/src/features", slug);
+
+  write(
+    join(base, "dtos", `${slug}.dto.ts`),
+    `export type ${pascal} = {
+  id: string;
+  name: string;
+};
+
+/** The shape AppCrud expects from the api. */
+export type ${pascal}Page = {
+  items: ${pascal}[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+};
+
+/** What the list page reads out of the url. */
+export type ${pascal}ListQuery = {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  sort_by?: string;
+  sort_dir?: string;
+};
+
+export type ActionState = {
+  ok: boolean;
+  message: string;
+};
+
+export const INITIAL_ACTION_STATE: ActionState = {
+  ok: false,
+  message: "",
+};
+`,
+  );
+
+  write(
+    join(base, "services", `${slug}.service.ts`),
+    `import "server-only";
+
+import type {
+  ${pascal}ListQuery,
+  ${pascal}Page,
+} from "@/features/${slug}/dtos/${slug}.dto";
+
+export async function list${pascal}(query: ${pascal}ListQuery): Promise<${pascal}Page> {
+  return {
+    items: [],
+    total: 0,
+    page: query.page ?? 1,
+    per_page: query.per_page ?? 10,
+    total_pages: 0,
+  };
+}
+`,
+  );
+
+  write(
+    join(base, "actions", `${slug}.actions.ts`),
+    `"use server";
+
+import { revalidatePath } from "next/cache";
+
+import type { ActionState } from "@/features/${slug}/dtos/${slug}.dto";
+
+const FEATURE_PATH = "/dashboard/${slug}";
+
+function toMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function readText(formData: FormData, field: string): string {
+  return String(formData.get(field) ?? "").trim();
+}
+
+export async function create${pascal}Action(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const name = readText(formData, "name");
+
+  if (name.length === 0) {
+    return { ok: false, message: "Name is required" };
+  }
+
+  try {
+    revalidatePath(FEATURE_PATH);
+    return { ok: true, message: \`Created \${name}\` };
+  } catch (error) {
+    return { ok: false, message: toMessage(error) };
+  }
+}
+
+export async function delete${pascal}Action(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = Number(formData.get("id"));
+
+  try {
+    revalidatePath(FEATURE_PATH);
+    return { ok: true, message: \`Deleted \${id}\` };
+  } catch (error) {
+    return { ok: false, message: toMessage(error) };
+  }
+}
+`,
+  );
+
+  write(
+    join(base, "components", `${slug}-crud.tsx`),
+    `"use client";
+
+import { AppCrud } from "@/components/composite/app-crud";
+import type { CrudColumn, CrudField } from "@/components/composite/crud-types";
+import {
+  create${pascal}Action,
+  delete${pascal}Action,
+} from "@/features/${slug}/actions/${slug}.actions";
+import type { ${pascal}, ${pascal}Page } from "@/features/${slug}/dtos/${slug}.dto";
+
+const COLUMNS: CrudColumn<${pascal}>[] = [
+  { key: "name", header: "Name", sortable: true, className: "font-medium" },
+];
+
+const FIELDS: CrudField<${pascal}>[] = [
+  {
+    name: "name",
+    label: "Name",
+    required: true,
+    initialValue: (row) => row.name,
+  },
+];
+
+type Props = {
+  page: ${pascal}Page;
+};
+
+export function ${pascal}Crud({ page }: Props) {
+  return (
+    <AppCrud<${pascal}>
+      title="${pascal} Management"
+      page={page}
+      columns={COLUMNS}
+      fields={FIELDS}
+      labels={{ singular: "${slug}" }}
+      actions={{
+        create: create${pascal}Action,
+        remove: delete${pascal}Action,
+      }}
+    />
+  );
+}
+`,
+  );
+
+  write(
+    join(base, "index.tsx"),
+    `import { ${pascal}Crud } from "@/features/${slug}/components/${slug}-crud";
+import type { ${pascal}ListQuery } from "@/features/${slug}/dtos/${slug}.dto";
+import { list${pascal} } from "@/features/${slug}/services/${slug}.service";
+
+type Props = {
+  searchParams: Record<string, string | string[] | undefined>;
+};
+
+function toQuery(params: Props["searchParams"]): ${pascal}ListQuery {
+  const read = (key: string): string | undefined => {
+    const value = params[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  return {
+    page: Number(read("page")) || undefined,
+    per_page: Number(read("per_page")) || undefined,
+    search: read("search"),
+    sort_by: read("sort_by"),
+    sort_dir: read("sort_dir"),
+  };
+}
+
+export async function ${pascal}View({ searchParams }: Props) {
+  const page = await list${pascal}(toQuery(searchParams));
+  return <${pascal}Crud page={page} />;
+}
+`,
+  );
+}
 
 async function ask(question: string, options: readonly string[] = []): Promise<string> {
   const rl = createInterface({ input: stdin, output: stdout });
@@ -836,9 +1193,9 @@ async function main(): Promise<number> {
       if (!NAME_PATTERN.test(channel)) {
         throw new ScaffoldError("channel must be snake_case");
       }
-      // scaffoldWorker(name, channel); // UNCOMMENT/ADD BACK IN FROM ORIGINAL
+      scaffoldWorker(name, channel);
     } else {
-      // scaffoldWeb(name); // UNCOMMENT/ADD BACK IN FROM ORIGINAL
+      scaffoldWeb(name);
     }
 
     console.log("\nDone. Run `just codegen` (and potentially `sea-orm-cli migrate up`) to verify.");
